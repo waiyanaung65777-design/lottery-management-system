@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>အကောင့်ဝင်ရန် - 2D 3D Lottery Management System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Padauk', 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <div class="w-full max-w-md space-y-6">
+
+    <!-- Header Logo & Title -->
+    <div class="text-center space-y-2">
+      <div class="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-emerald-500 items-center justify-center font-bold text-slate-950 text-2xl shadow-xl shadow-emerald-500/10">
+        2D
+      </div>
+      <h1 class="text-2xl font-bold tracking-tight text-white">2D 3D Lottery System</h1>
+      <p class="text-xs text-slate-400">စနစ်အတွင်းသို့ ဝင်ရောက်ရန် အကောင့်ဝင်ပါ</p>
+      
+      <!-- Supabase Status Badge -->
+      <div id="supabaseStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="supabaseStatusText">Supabase Auth System</span>
+      </div>
+    </div>
+
+    <!-- Login Card -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5">
+      
+      <!-- Error Message -->
+      <div id="loginError" class="hidden p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-xs font-semibold text-rose-300"></div>
+
+      <form id="loginForm" class="space-y-4" onsubmit="handleLogin(event)">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">အကောင့် အီးမေးလ် သို့မဟုတ် Username</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 text-slate-500 absolute left-3.5 top-3"></i>
+            <input type="text" id="usernameInput" required placeholder="admin သို့မဟုတ် agent1" 
+                   class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">စကားဝှက် (Password)</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 text-slate-500 absolute left-3.5 top-3"></i>
+            <input type="password" id="passwordInput" placeholder="••••••••" 
+                   class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+        </div>
+
+        <button type="submit" id="btnLoginSubmit"
+                class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
+          <span>အကောင့်ဝင်မည်</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <!-- Quick Demo Login Presets -->
+      <div class="border-t border-slate-800 pt-5 space-y-3">
+        <span class="block text-center text-xs text-slate-500 font-medium">စမ်းသပ်ရန်အတွက် ချက်ချင်း ဝင်နိုင်သော အကောင့်များ:</span>
+        <div class="grid grid-cols-1 gap-2">
+          <button type="button" onclick="quickLogin('admin')" 
+                  class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <i data-lucide="shield" class="w-4 h-4 text-amber-400"></i>
+              ဒိုင်ချုပ်ကြီး အကောင့် (Banker Dashboard)
+            </span>
+            <span class="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded text-amber-300">admin</span>
+          </button>
+
+          <button type="button" onclick="quickLogin('agent1')" 
+                  class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
+              ကော်မရှင် ကိုအောင် (Agent 1 - 15%)
+            </span>
+            <span class="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300">agent1</span>
+          </button>
+
+          <button type="button" onclick="quickLogin('agent2')" 
+                  class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <i data-lucide="user" class="w-4 h-4 text-cyan-400"></i>
+              ကော်မရှင် ကိုကျော် (Agent 2 - 12%)
+            </span>
+            <span class="text-[10px] bg-cyan-500/20 px-2 py-0.5 rounded text-cyan-300">agent2</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer Note -->
+    <p class="text-center text-[11px] text-slate-500">
+      Supabase Auth & PostgreSQL Schema Ready • Mobile First
+    </p>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // Check existing login
+    document.addEventListener('DOMContentLoaded', async () => {
+      checkSupabaseStatus();
+      const existingUser = localStorage.getItem('lottery_user');
+      if (existingUser) {
+        try {
+          const user = JSON.parse(existingUser);
+          if (user.role === 'banker') window.location.href = '/banker';
+          else if (user.role === 'agent') window.location.href = '/agent';
+        } catch (e) {}
+      }
+    });
+
+    async function checkSupabaseStatus() {
+      try {
+        const res = await fetch('/api/auth/status');
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('supabaseStatusText').textContent = json.message;
+        }
+      } catch (err) {}
+    }
+
+    async function quickLogin(username) {
+      document.getElementById('usernameInput').value = username;
+      document.getElementById('passwordInput').value = '123456';
+      await performLogin(username, '123456');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('usernameInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+      await performLogin(username, password);
+    }
+
+    async function performLogin(username, password) {
+      const errBox = document.getElementById('loginError');
+      const btn = document.getElementById('btnLoginSubmit');
+      errBox.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="animate-spin mr-2">⏳</span> စစ်ဆေးနေပါသည်...`;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emailOrUsername: username, password })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          localStorage.setItem('lottery_token', json.data.token);
+          localStorage.setItem('lottery_user', JSON.stringify(json.data.user));
+
+          // Role-based Redirection
+          if (json.data.user.role === 'banker') {
+            window.location.href = '/banker';
+          } else {
+            window.location.href = '/agent';
+          }
+        } else {
+          errBox.textContent = json.error || 'အကောင့်ဝင်၍ မအောင်မြင်ပါ';
+          errBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        errBox.textContent = 'Connection error: ' + err.message;
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>အကောင့်ဝင်မည်</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+        lucide.createIcons();
+      }
+    }
+  </script>
+</body>
+</html>

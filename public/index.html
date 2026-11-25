@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D 3D Lottery Management System (ဒိုင် & ကော်မရှင်)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Padauk', 'Inter', sans-serif;
+    }
+    .badge-chip {
+      transition: all 0.15s ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 flex items-center justify-center font-bold text-slate-950 text-xl shadow-lg">
+          2D
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            2D 3D Lottery Master
+            <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Live System</span>
+          </h1>
+          <p class="text-xs text-slate-400">ဒိုင် & ကော်မရှင် စာရင်းကိုင်စနစ်</p>
+        </div>
+      </div>
+
+      <!-- Role Switcher -->
+      <div class="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700">
+        <span class="text-xs text-slate-400 px-2 font-medium">လက်ရှိသုံးနေသူ:</span>
+        <select id="userSelector" class="bg-slate-900 text-amber-400 text-sm font-semibold rounded-lg px-3 py-1.5 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+          <!-- Populated by JS -->
+        </select>
+        <span id="roleBadge" class="text-xs px-2.5 py-1 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          ဒိုင်ချုပ်
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-1">
+
+    <!-- Flash Notification Toast -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-sm font-medium flex items-center gap-3 transition-all duration-300">
+      <span id="toastMsg"></span>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- AGENT PORTAL (ကော်မရှင် မျက်နှာပြင်) -->
+    <!-- ============================================== -->
+    <div id="agentSection" class="space-y-6">
+
+      <!-- Navigation Tabs for Agent -->
+      <div class="flex border-b border-slate-800 gap-4">
+        <button onclick="switchAgentTab('entry')" id="tabBtnAgentEntry" class="pb-3 px-2 text-sm font-bold border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2">
+          <i data-lucide="zap" class="w-4 h-4"></i> အမြန်ထိုးစာသားဖြန့်စနစ် (Smart Bet Entry)
+        </button>
+        <button onclick="switchAgentTab('slips')" id="tabBtnAgentSlips" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+          <i data-lucide="receipt" class="w-4 h-4"></i> ကျွန်ုပ်၏ထိုးစလစ်များ (My Slips)
+        </button>
+        <button onclick="switchAgentTab('ledger')" id="tabBtnAgentLedger" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+          <i data-lucide="wallet" class="w-4 h-4"></i> ကော်မရှင်ရှင်းတမ်း (My Ledger)
+        </button>
+      </div>
+
+      <!-- TAB 1: SMART BET ENTRY -->
+      <div id="agentTabEntry" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Input Column (Left) -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+            
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="message-square" class="w-5 h-5 text-emerald-400"></i>
+                Telegram မှ ထိုးစာသား ရိုက်ထည့်ရန်
+              </h2>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-400">ပွဲစဉ်ရွေးရန်:</label>
+                <select id="agentSessionSelect" class="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:ring-1 focus:ring-emerald-500">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+            </div>
+
+            <!-- Customer Name & Lottery Type -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">ထိုးသား အမည် (Telegram Name)</label>
+                <input type="text" id="customerNameInput" placeholder="ဥပမာ - ကိုကျော် (Telegram)" 
+                       class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">ထီအမျိုးအစား (Lottery Type)</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" id="btnType2D" onclick="setBetType('2D')" class="py-2 rounded-xl text-xs font-bold border border-emerald-500 bg-emerald-500/20 text-emerald-300">2D</button>
+                  <button type="button" id="btnType3D" onclick="setBetType('3D')" class="py-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white">3D</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Template Shortcuts -->
+            <div>
+              <span class="text-xs text-slate-400 block mb-1.5">အသုံးများသော ဖြတ်လမ်းနမူနာများ (နှိပ်ပါ):</span>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="insertTemplate('45 R 200')" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded-md border border-slate-700">45 R 200 (အာ)</button>
+                <button type="button" onclick="insertTemplate('95 1000')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-md border border-slate-700">95 1000</button>
+                <button type="button" onclick="insertTemplate('123 R 500')" class="text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded-md border border-slate-700">123 R 500 (3D ပတ်)</button>
+                <button type="button" onclick="insertTemplate('ပူး 200')" class="text-xs bg-slate-800 hover:bg-slate-700 text-purple-300 px-2 py-1 rounded-md border border-slate-700">ပူး 200 (အပူး ၁၀ ကွက်)</button>
+                <button type="button" onclick="insertTemplate('4ထိပ် 300')" class="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded-md border border-slate-700">4ထိပ် 300</button>
+                <button type="button" onclick="insertTemplate('5ပိတ် 300')" class="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded-md border border-slate-700">5ပိတ် 300</button>
+                <button type="button" onclick="insertTemplate('ပါဝါ 100')" class="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded-md border border-slate-700">ပါဝါ 100</button>
+                <button type="button" onclick="insertTemplate('နက္ခတ် 100')" class="text-xs bg-slate-800 hover:bg-slate-700 text-pink-300 px-2 py-1 rounded-md border border-slate-700">နက္ခတ် 100</button>
+              </div>
+            </div>
+
+            <!-- Smart Textarea -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                <span>ထိုးသားပို့သော စာသား (တစ်ကြောင်းချင်း သို့မဟုတ် Copy-Paste ချပါ):</span>
+                <button type="button" onclick="clearInput()" class="text-slate-400 hover:text-red-400 text-xs">ရှင်းမည်</button>
+              </label>
+              <textarea id="betTextInput" rows="6" 
+                placeholder="ဥပမာ-&#10;45 R 200&#10;95 1000&#10;12, 34, 56 - 500"
+                class="w-full bg-slate-950 font-mono text-sm border border-slate-700 rounded-xl p-3 text-emerald-400 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+            </div>
+
+            <!-- Error Notice if any -->
+            <div id="parseErrors" class="hidden p-3 rounded-xl bg-red-950/40 border border-red-800/60 text-xs text-red-300 space-y-1"></div>
+
+          </div>
+        </div>
+
+        <!-- Live Preview & Submission Column (Right) -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col h-full">
+            
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="calculator" class="w-5 h-5 text-amber-400"></i>
+                စာရင်းဖြန့် တွက်ချက်မှု Live Preview
+              </h2>
+              <span id="previewCountBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                0 ကွက်
+              </span>
+            </div>
+
+            <!-- Financial Calculation Cards -->
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400 block">စုစုပေါင်းထိုးကြေး:</span>
+                <span id="previewTotalAmt" class="text-base font-bold text-white">0 Ks</span>
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-emerald-400 block font-medium" id="previewCommLabel">ကော်မရှင် (15%):</span>
+                <span id="previewCommAmt" class="text-base font-bold text-emerald-400">+0 Ks</span>
+              </div>
+              <div class="col-span-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                <span class="text-slate-400">ဒိုင်ဆီသို့ တင်ရမည့် အသားတင်ငွေ:</span>
+                <span id="previewNetBanker" class="text-sm font-bold text-amber-400">0 Ks</span>
+              </div>
+            </div>
+
+            <!-- Expanded Number Chips Preview -->
+            <div class="flex-1 bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 min-h-[160px] max-h-[220px] overflow-y-auto">
+              <span class="text-xs text-slate-500 block mb-2 font-medium">ဖြန့်ထုတ်ထားသော ဂဏန်းများ (Expanded Bets):</span>
+              <div id="previewChipsContainer" class="flex flex-wrap gap-1.5">
+                <div class="text-xs text-slate-600 italic py-4 w-full text-center">
+                  စာသားရိုက်ထည့်ပါက ဤနေရာတွင် အော်တို ဂဏန်းများ ဖြန့်ပေါ်လာပါမည်။
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button & Action -->
+            <div class="space-y-2 pt-2">
+              <button id="btnSubmitBet" onclick="submitBetSlip()" disabled
+                      class="w-full py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                ဒိုင်ဆီသို့ စာရင်းတင်မည် (Confirm & Send)
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: AGENT MY SLIPS -->
+      <div id="agentTabSlips" class="hidden space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="receipt" class="w-5 h-5 text-emerald-400"></i>
+              ကျွန်ုပ် တင်ထားသော စလစ်များ (My Betting Slips)
+            </h2>
+            <button onclick="loadAgentSlips()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> ပြန်လည်စစ်မည်
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-800 text-slate-400 uppercase font-semibold">
+                <tr>
+                  <th class="p-3">စလစ် #</th>
+                  <th class="p-3">အချိန်</th>
+                  <th class="p-3">ထိုးသား</th>
+                  <th class="p-3">ပွဲစဉ်</th>
+                  <th class="p-3">အထိုးစုစုပေါင်း</th>
+                  <th class="p-3">ကော်မရှင်ရငွေ</th>
+                  <th class="p-3">ဒိုင်ဆီပေးရမည့်ငွေ</th>
+                  <th class="p-3">ပေါက်/မပေါက်</th>
+                  <th class="p-3 text-right">အသေးစိတ် / Telegram</th>
+                </tr>
+              </thead>
+              <tbody id="agentSlipsTableBody" class="divide-y divide-slate-800">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: AGENT LEDGER -->
+      <div id="agentTabLedger" class="hidden space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400">တင်သွင်းပြီး စုစုပေါင်းထိုးကြေး</span>
+            <div id="agentStatTotalBet" class="text-xl font-bold text-white mt-1">0 Ks</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-emerald-400">ရရှိပြီး ကော်မရှင် စုစုပေါင်း</span>
+            <div id="agentStatComm" class="text-xl font-bold text-emerald-400 mt-1">0 Ks</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-amber-400">ဒိုင်သို့ ပေးသွင်းရန် ငွေ</span>
+            <div id="agentStatNetToBanker" class="text-xl font-bold text-amber-400 mt-1">0 Ks</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-cyan-400">ထိုးသားများ ပေါက်ငွေ စုစုပေါင်း</span>
+            <div id="agentStatWinningPayout" class="text-xl font-bold text-cyan-400 mt-1">0 Ks</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================== -->
+    <!-- BANKER PORTAL (ဒိုင်ချုပ် မျက်နှာပြင်) -->
+    <!-- ============================================== -->
+    <div id="bankerSection" class="hidden space-y-6">
+
+      <!-- Navigation Tabs for Banker -->
+      <div class="flex border-b border-slate-800 gap-4">
+        <button onclick="switchBankerTab('overview')" id="tabBtnBankerOverview" class="pb-3 px-2 text-sm font-bold border-b-2 border-amber-500 text-amber-400 flex items-center gap-2">
+          <i data-lucide="bar-chart-3" class="w-4 h-4"></i> ဒိုင်ချုပ် စာရင်းအင်း (Overview)
+        </button>
+        <button onclick="switchBankerTab('settle')" id="tabBtnBankerSettle" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+          <i data-lucide="trophy" class="w-4 h-4"></i> ပေါက်ဂဏန်း သွင်းခြင်း (Settle Result)
+        </button>
+        <button onclick="switchBankerTab('limits')" id="tabBtnBankerLimits" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+          <i data-lucide="shield-alert" class="w-4 h-4"></i> ဘရိတ် / ပိတ်ဂဏန်း (Hot Limits)
+        </button>
+        <button onclick="switchBankerTab('agents')" id="tabBtnBankerAgents" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+          <i data-lucide="users" class="w-4 h-4"></i> ကော်မရှင် အေးဂျင့်များ (Agents)
+        </button>
+        <button onclick="switchBankerTab('allslips')" id="tabBtnBankerSlips" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+          <i data-lucide="list-ordered" class="w-4 h-4"></i> အားလုံးသော ထိုးစလစ်များ (All Slips)
+        </button>
+      </div>
+
+      <!-- BANKER TAB 1: OVERVIEW & HEATMAP -->
+      <div id="bankerTabOverview" class="space-y-6">
+        <!-- 4 Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400">စုစုပေါင်း အထိုးကြေး (Gross)</span>
+            <div id="bStatGrossBet" class="text-2xl font-bold text-white mt-1">0 Ks</div>
+            <span id="bStatSlipCount" class="text-xs text-slate-500">0 စလစ်</span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-emerald-400">ကော်မရှင် စရိတ် (Commissions)</span>
+            <div id="bStatCommission" class="text-2xl font-bold text-emerald-400 mt-1">-0 Ks</div>
+            <span class="text-xs text-slate-500">အေးဂျင့်များသို့</span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-amber-400">ဒိုင်လက်ကျန်ရောင်းရငွေ (Net)</span>
+            <div id="bStatNetSales" class="text-2xl font-bold text-amber-400 mt-1">0 Ks</div>
+            <span class="text-xs text-slate-500">Gross - Commission</span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-rose-400">ပေါက်ငွေ အလျော် (Payouts)</span>
+            <div id="bStatPayout" class="text-2xl font-bold text-rose-400 mt-1">-0 Ks</div>
+            <span class="text-xs text-slate-500">ထိုးသားများသို့</span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+            <span class="text-xs text-cyan-400 font-semibold">ဒိုင် အသားတင် အမြတ်/အရှုံး</span>
+            <div id="bStatNetProfit" class="text-2xl font-bold text-cyan-400 mt-1">0 Ks</div>
+            <span class="text-xs text-slate-500">Net Sales - Payout</span>
+          </div>
+        </div>
+
+        <!-- 2 Columns: Number Heatmap & Agent Breakdown -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Top Bet Numbers Heatmap -->
+          <div class="lg:col-span-7 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <i data-lucide="flame" class="w-4 h-4 text-rose-500"></i>
+                  အများဆုံးထိုးထားသော ဂဏန်းများ (Risk Exposure Heatmap)
+                </h3>
+                <p class="text-xs text-slate-400">ဒိုင်အတွက် အန္တရာယ်အများဆုံး ဂဏန်းစာရင်းချုပ်</p>
+              </div>
+            </div>
+            <div id="bNumberHeatmap" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[350px] overflow-y-auto">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Agent Performance Breakdown -->
+          <div class="lg:col-span-5 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i>
+              ကော်မရှင် အေးဂျင့်များအလိုက် စာရင်းချုပ်
+            </h3>
+            <div id="bAgentBreakdownList" class="space-y-3 max-h-[350px] overflow-y-auto">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- BANKER TAB 2: SETTLE RESULT -->
+      <div id="bankerTabSettle" class="hidden space-y-4">
+        <div class="max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-5">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+            ပေါက်ဂဏန်း သွင်းခြင်းနှင့် အော်တို ရှင်းတမ်းထုတ်ခြင်း
+          </h2>
+          <p class="text-xs text-slate-400">
+            ပေါက်ဂဏန်း ရိုက်ထည့်လိုက်သည်နှင့် စနစ်က အဆိုပါပွဲစဉ်တွင် ထိုးထားသမျှ စလစ်အားလုံးကို စစ်ဆေးပေးပြီး အနိုင်ရသူများအား အလိုအလျောက် ပေါက်ငွေ တွက်ချက်ပေးမည် ဖြစ်သည်။
+          </p>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">ပွဲစဉ်ရွေးချယ်ပါ</label>
+              <select id="settleSessionSelect" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+                <!-- Populated by JS -->
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">ပေါက်ဂဏန်း ထည့်သွင်းပါ (Winning Number)</label>
+              <input type="text" id="winningNumberInput" placeholder="ဥပမာ 2D ဆိုလျှင် 45, 3D ဆိုလျှင် 123" maxlength="3"
+                     class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-2xl font-bold font-mono tracking-widest text-amber-400 text-center focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+
+            <button onclick="settleSession()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-slate-950 font-bold rounded-xl text-sm shadow-lg flex items-center justify-center gap-2">
+              <i data-lucide="check-circle" class="w-4 h-4"></i>
+              ပေါက်ဂဏန်း အတည်ပြုပြီး စာရင်းရှင်းမည် (Settle Now)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BANKER TAB 3: LIMITS & BLOCKED NUMBERS -->
+      <div id="bankerTabLimits" class="hidden space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i>
+              ဘရိတ် / ပိတ်ဂဏန်း အသစ် သတ်မှတ်ရန်
+            </h3>
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">ထီအမျိုးအစား</label>
+                <select id="limitTypeSelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+                  <option value="2D">2D</option>
+                  <option value="3D">3D</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">ဂဏန်း (ဥပမာ 95)</label>
+                <input type="text" id="limitNumberInput" placeholder="95" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+              </div>
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">အများဆုံး လက်ခံမည့် ပမာဏ (Limit Amount)</label>
+                <input type="number" id="limitAmountInput" placeholder="50000 (0 ထည့်ပါက လုံးဝ ပိတ်ပါမည်)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+                <span class="text-slate-500 text-[11px] block mt-1">* ပမာဏတွင် 0 ဟု ရိုက်ထည့်ပါက အဆိုပါဂဏန်းကို လုံးဝ ပိတ်ဂဏန်းအဖြစ် သတ်မှတ်မည်။</span>
+              </div>
+              <button onclick="addNumberLimit()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl">
+                သတ်မှတ်မည်
+              </button>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+              လက်ရှိ သတ်မှတ်ထားသော ပိတ်ဂဏန်းနှင့် ဘရိတ်များ
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-800 text-slate-400 uppercase">
+                  <tr>
+                    <th class="p-2.5">အမျိုးအစား</th>
+                    <th class="p-2.5">ဂဏန်း</th>
+                    <th class="p-2.5">သတ်မှတ်ချက်</th>
+                    <th class="p-2.5 text-right">ဖျက်မည်</th>
+                  </tr>
+                </thead>
+                <tbody id="limitsTableBody" class="divide-y divide-slate-800">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BANKER TAB 4: AGENTS -->
+      <div id="bankerTabAgents" class="hidden space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <i data-lucide="user-plus" class="w-4 h-4 text-emerald-400"></i>
+              ကော်မရှင် အေးဂျင့် အသစ်ဖွင့်ပေးရန်
+            </h3>
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">အေးဂျင့် အမည် (Name)</label>
+                <input type="text" id="newAgentName" placeholder="ကိုအောင်" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+              </div>
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">အကောင့် Username</label>
+                <input type="text" id="newAgentUsername" placeholder="agent3" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+              </div>
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">ကော်မရှင် ရာခိုင်နှုန်း (Commission %)</label>
+                <input type="number" id="newAgentComm" placeholder="15" value="15" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+              </div>
+              <button onclick="createAgent()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl">
+                အကောင့်ဖွင့်မည်
+              </button>
+            </div>
+          </div>
+
+          <div class="lg:col-span-8 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <i data-lucide="users" class="w-4 h-4 text-amber-400"></i>
+              ကော်မရှင် အေးဂျင့်များ စာရင်း
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-800 text-slate-400 uppercase">
+                  <tr>
+                    <th class="p-2.5">အမည်</th>
+                    <th class="p-2.5">Username</th>
+                    <th class="p-2.5">ကော်မရှင် %</th>
+                    <th class="p-2.5">အခြေအနေ</th>
+                  </tr>
+                </thead>
+                <tbody id="bankerAgentsTableBody" class="divide-y divide-slate-800">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BANKER TAB 5: ALL SLIPS -->
+      <div id="bankerTabAllSlips" class="hidden space-y-4">
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+              ဒိုင်ဆီသို့ တက်လာသမျှ စလစ်များ အားလုံး
+            </h3>
+            <button onclick="loadBankerSlips()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> အသစ်ပြန်ဖွင့်ရန်
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-800 text-slate-400 uppercase">
+                <tr>
+                  <th class="p-3">စလစ် #</th>
+                  <th class="p-3">အချိန်</th>
+                  <th class="p-3">ကော်မရှင် (Agent)</th>
+                  <th class="p-3">ထိုးသား</th>
+                  <th class="p-3">ပွဲစဉ်</th>
+                  <th class="p-3">အထိုးစုစုပေါင်း</th>
+                  <th class="p-3">ကော်မရှင်</th>
+                  <th class="p-3">ဒိုင်လက်ကျန်</th>
+                  <th class="p-3">အခြေအနေ</th>
+                </tr>
+              </thead>
+              <tbody id="bankerAllSlipsTableBody" class="divide-y divide-slate-800">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Slip Details & Telegram Slip Modal -->
+  <div id="slipModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-emerald-400"></i>
+          စလစ် အသေးစိတ်နှင့် Telegram စာစောင်
+        </h3>
+        <button onclick="closeSlipModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <!-- Telegram Formatted Slip Preview -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1">Telegram သို့ ပြန်ပို့ရန် ကော်ပီကူးယူနိုင်သော စလစ်စာသား:</label>
+        <textarea id="telegramSlipText" rows="7" readonly class="w-full bg-slate-950 font-mono text-xs text-emerald-400 border border-slate-800 rounded-xl p-3 focus:outline-none"></textarea>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="copyTelegramSlip()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-white rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg">
+          <i data-lucide="copy" class="w-4 h-4"></i> Telegram စာသား ကော်ပီယူမည်
+        </button>
+        <button onclick="closeSlipModal()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs">
+          ပိတ်မည်
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

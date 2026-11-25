@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ကော်မရှင် အေးဂျင့် Portal - 2D 3D Lottery Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Padauk', 'Inter', sans-serif; }
+    .badge-chip { transition: all 0.15s ease-in-out; }
+  </style>
+  <script>
+    // Access Guard: Ensure user is logged in
+    const authUser = JSON.parse(localStorage.getItem('lottery_user') || 'null');
+    if (!authUser) {
+      window.location.href = '/login';
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center font-bold text-slate-950 text-xl shadow-lg">
+          2D
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white flex items-center gap-2">
+            ကော်မရှင် အေးဂျင့် Portal
+            <span id="agentCommBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              15% Comm
+            </span>
+          </h1>
+          <p class="text-xs text-slate-400">Telegram အထိုးစာရင်းများ အမြန်သွင်းစနစ်</p>
+        </div>
+      </div>
+
+      <!-- Agent Info & Logout -->
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <div id="agentNameDisplay" class="text-xs font-bold text-white">ကော်မရှင် အေးဂျင့်</div>
+          <div class="text-[10px] text-emerald-400">Active Agent Account</div>
+        </div>
+        <button onclick="logout()" class="px-3 py-1.5 bg-slate-800 hover:bg-rose-950/80 hover:text-rose-300 border border-slate-700 hover:border-rose-800 rounded-xl text-xs font-semibold text-slate-300 flex items-center gap-1.5 transition-all">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span>ထွက်မည်</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-1 space-y-6">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-3 transition-all">
+      <span id="toastMsg"></span>
+    </div>
+
+    <!-- Navigation Tabs for Agent -->
+    <div class="flex border-b border-slate-800 gap-4">
+      <button onclick="switchAgentTab('entry')" id="tabBtnAgentEntry" class="pb-3 px-2 text-sm font-bold border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2">
+        <i data-lucide="zap" class="w-4 h-4"></i> အမြန်ထိုးစာသားဖြန့်စနစ် (Smart Bet Entry)
+      </button>
+      <button onclick="switchAgentTab('slips')" id="tabBtnAgentSlips" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <i data-lucide="receipt" class="w-4 h-4"></i> ကျွန်ုပ်၏ထိုးစလစ်များ (My Slips)
+      </button>
+      <button onclick="switchAgentTab('ledger')" id="tabBtnAgentLedger" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+        <i data-lucide="wallet" class="w-4 h-4"></i> ကော်မရှင်ရှင်းတမ်း (My Ledger)
+      </button>
+    </div>
+
+    <!-- TAB 1: SMART BET ENTRY -->
+    <div id="agentTabEntry" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Input Column -->
+      <div class="lg:col-span-7 space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+          
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="message-square" class="w-5 h-5 text-emerald-400"></i>
+              Telegram မှ စာသား ရိုက်ထည့်ရန်
+            </h2>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-slate-400">ပွဲစဉ်:</label>
+              <select id="agentSessionSelect" class="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:ring-1 focus:ring-emerald-500">
+                <!-- Populated by JS -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Customer Name & Lottery Type -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">ထိုးသား အမည် (Telegram Name)</label>
+              <input type="text" id="customerNameInput" placeholder="ဥပမာ - ကိုကျော် (Telegram)" 
+                     class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">ထီအမျိုးအစား</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="btnType2D" onclick="setBetType('2D')" class="py-2 rounded-xl text-xs font-bold border border-emerald-500 bg-emerald-500/20 text-emerald-300">2D</button>
+                <button type="button" id="btnType3D" onclick="setBetType('3D')" class="py-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white">3D</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Shortcuts -->
+          <div>
+            <span class="text-xs text-slate-400 block mb-1.5">အသုံးများသော ဖြတ်လမ်းနမူနာများ (နှိပ်ပါ):</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" onclick="insertTemplate('45 R 200')" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded-md border border-slate-700">45 R 200 (အာ)</button>
+              <button type="button" onclick="insertTemplate('95 1000')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-md border border-slate-700">95 1000</button>
+              <button type="button" onclick="insertTemplate('123 R 500')" class="text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 px-2 py-1 rounded-md border border-slate-700">123 R 500 (3D ပတ်)</button>
+              <button type="button" onclick="insertTemplate('ပူး 200')" class="text-xs bg-slate-800 hover:bg-slate-700 text-purple-300 px-2 py-1 rounded-md border border-slate-700">ပူး 200 (အပူး ၁၀ ကွက်)</button>
+              <button type="button" onclick="insertTemplate('4ထိပ် 300')" class="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded-md border border-slate-700">4ထိပ် 300</button>
+              <button type="button" onclick="insertTemplate('5ပိတ် 300')" class="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded-md border border-slate-700">5ပိတ် 300</button>
+              <button type="button" onclick="insertTemplate('ပါဝါ 100')" class="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-1 rounded-md border border-slate-700">ပါဝါ 100</button>
+              <button type="button" onclick="insertTemplate('နက္ခတ် 100')" class="text-xs bg-slate-800 hover:bg-slate-700 text-pink-300 px-2 py-1 rounded-md border border-slate-700">နက္ခတ် 100</button>
+            </div>
+          </div>
+
+          <!-- Textarea -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+              <span>ထိုးသားပို့သော စာသား (ရိုက်ထည့်ပါ သို့မဟုတ် Copy-Paste ချပါ):</span>
+              <button type="button" onclick="clearInput()" class="text-slate-400 hover:text-red-400 text-xs">ရှင်းမည်</button>
+            </label>
+            <textarea id="betTextInput" rows="6" 
+              placeholder="ဥပမာ-&#10;45 R 200&#10;95 1000&#10;12, 34, 56 - 500"
+              class="w-full bg-slate-950 font-mono text-sm border border-slate-700 rounded-xl p-3 text-emerald-400 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+          </div>
+
+          <!-- Errors -->
+          <div id="parseErrors" class="hidden p-3 rounded-xl bg-red-950/40 border border-red-800/60 text-xs text-red-300 space-y-1"></div>
+
+        </div>
+      </div>
+
+      <!-- Right Preview & Calculation Column -->
+      <div class="lg:col-span-5 space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col h-full">
+          
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="calculator" class="w-5 h-5 text-amber-400"></i>
+              စာရင်းဖြန့် တွက်ချက်မှု Live Preview
+            </h2>
+            <span id="previewCountBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              0 ကွက်
+            </span>
+          </div>
+
+          <!-- Financial Cards -->
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-slate-400 block">စုစုပေါင်းထိုးကြေး:</span>
+              <span id="previewTotalAmt" class="text-base font-bold text-white">0 Ks</span>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-emerald-400 block font-medium" id="previewCommLabel">ကော်မရှင် (15%):</span>
+              <span id="previewCommAmt" class="text-base font-bold text-emerald-400">+0 Ks</span>
+            </div>
+            <div class="col-span-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+              <span class="text-slate-400">ဒိုင်ဆီသို့ တင်ရမည့် အသားတင်ငွေ:</span>
+              <span id="previewNetBanker" class="text-sm font-bold text-amber-400">0 Ks</span>
+            </div>
+          </div>
+
+          <!-- Expanded Chips -->
+          <div class="flex-1 bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 min-h-[160px] max-h-[220px] overflow-y-auto">
+            <span class="text-xs text-slate-500 block mb-2 font-medium">ဖြန့်ထုတ်ထားသော ဂဏန်းများ (Expanded Bets):</span>
+            <div id="previewChipsContainer" class="flex flex-wrap gap-1.5">
+              <div class="text-xs text-slate-600 italic py-4 w-full text-center">
+                စာသားရိုက်ထည့်ပါက ဤနေရာတွင် အော်တို ဂဏန်းများ ဖြန့်ပေါ်လာပါမည်။
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="space-y-2 pt-2">
+            <button id="btnSubmitBet" onclick="submitBetSlip()" disabled
+                    class="w-full py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg">
+              <i data-lucide="send" class="w-4 h-4"></i>
+              ဒိုင်ဆီသို့ စာရင်းတင်မည် (Confirm & Send)
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: AGENT MY SLIPS -->
+    <div id="agentTabSlips" class="hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="receipt" class="w-5 h-5 text-emerald-400"></i>
+            ကျွန်ုပ် တင်ထားသော စလစ်များ (My Betting Slips)
+          </h2>
+          <button onclick="loadAgentSlips()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> ပြန်လည်စစ်မည်
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-800 text-slate-400 uppercase font-semibold">
+              <tr>
+                <th class="p-3">စလစ် #</th>
+                <th class="p-3">အချိန်</th>
+                <th class="p-3">ထိုးသား</th>
+                <th class="p-3">ပွဲစဉ်</th>
+                <th class="p-3">အထိုးစုစုပေါင်း</th>
+                <th class="p-3">ကော်မရှင်ရငွေ</th>
+                <th class="p-3">ဒိုင်ဆီပေးရမည့်ငွေ</th>
+                <th class="p-3">ပေါက်/မပေါက်</th>
+                <th class="p-3 text-right">Telegram စလစ်</th>
+              </tr>
+            </thead>
+            <tbody id="agentSlipsTableBody" class="divide-y divide-slate-800">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: AGENT LEDGER -->
+    <div id="agentTabLedger" class="hidden space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-slate-400">တင်သွင်းပြီး စုစုပေါင်းထိုးကြေး</span>
+          <div id="agentStatTotalBet" class="text-xl font-bold text-white mt-1">0 Ks</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-emerald-400">ရရှိပြီး ကော်မရှင် စုစုပေါင်း</span>
+          <div id="agentStatComm" class="text-xl font-bold text-emerald-400 mt-1">0 Ks</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-amber-400">ဒိုင်သို့ ပေးသွင်းရန် ငွေ</span>
+          <div id="agentStatNetToBanker" class="text-xl font-bold text-amber-400 mt-1">0 Ks</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-cyan-400">ထိုးသားများ ပေါက်ငွေ စုစုပေါင်း</span>
+          <div id="agentStatWinningPayout" class="text-xl font-bold text-cyan-400 mt-1">0 Ks</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Telegram Slip Receipt Modal -->
+  <div id="slipModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-emerald-400"></i>
+          စလစ် အသေးစိတ်နှင့် Telegram စာစောင်
+        </h3>
+        <button onclick="closeSlipModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1">Telegram သို့ ပြန်ပို့ရန် စလစ်စာသား:</label>
+        <textarea id="telegramSlipText" rows="7" readonly class="w-full bg-slate-950 font-mono text-xs text-emerald-400 border border-slate-800 rounded-xl p-3 focus:outline-none"></textarea>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="copyTelegramSlip()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-white rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg">
+          <i data-lucide="copy" class="w-4 h-4"></i> Telegram စာသား ကော်ပီယူမည်
+        </button>
+        <button onclick="closeSlipModal()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs">
+          ပိတ်မည်
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentLotteryType = '2D';
+    let currentParsedItems = [];
+    let parseDebounceTimer = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('agentNameDisplay').textContent = authUser.name || 'ကော်မရှင် အေးဂျင့်';
+      const commRate = authUser.commission_rate || 15;
+      document.getElementById('agentCommBadge').textContent = `${commRate}% Comm`;
+      document.getElementById('previewCommLabel').textContent = `ကော်မရှင် (${commRate}%):`;
+      
+      await loadSessions();
+      setupEventListeners();
+      lucide.createIcons();
+    });
+
+    function logout() {
+      localStorage.removeItem('lottery_token');
+      localStorage.removeItem('lottery_user');
+      window.location.href = '/login';
+    }
+
+    function setupEventListeners() {
+      const textInput = document.getElementById('betTextInput');
+      textInput.addEventListener('input', () => {
+        clearTimeout(parseDebounceTimer);
+        parseDebounceTimer = setTimeout(triggerParse, 200);
+      });
+
+      const sessionSelect = document.getElementById('agentSessionSelect');
+      sessionSelect.addEventListener('change', () => {
+        triggerParse();
+      });
+    }
+
+    async function loadSessions() {
+      try {
+        const res = await fetch('/api/sessions');
+        const json = await res.json();
+        if (json.success) {
+          const agentSelect = document.getElementById('agentSessionSelect');
+          agentSelect.innerHTML = json.data.map(s => 
+            `<option value="${s.id}">[${s.lottery_type}] ${s.session_name} (${s.status === 'open' ? '🟢 ဖွင့်လှစ်ဆဲ' : '🔴 ပြီးဆုံး'})</option>`
+          ).join('');
+        }
+      } catch (err) {}
+    }
+
+    function setBetType(type) {
+      currentLotteryType = type;
+      const btn2D = document.getElementById('btnType2D');
+      const btn3D = document.getElementById('btnType3D');
+      if (type === '2D') {
+        btn2D.className = 'py-2 rounded-xl text-xs font-bold border border-emerald-500 bg-emerald-500/20 text-emerald-300';
+        btn3D.className = 'py-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white';
+      } else {
+        btn3D.className = 'py-2 rounded-xl text-xs font-bold border border-cyan-500 bg-cyan-500/20 text-cyan-300';
+        btn2D.className = 'py-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white';
+      }
+      triggerParse();
+    }
+
+    function insertTemplate(snippet) {
+      const input = document.getElementById('betTextInput');
+      const current = input.value.trim();
+      input.value = current ? current + '\n' + snippet : snippet;
+      triggerParse();
+      input.focus();
+    }
+
+    function clearInput() {
+      document.getElementById('betTextInput').value = '';
+      triggerParse();
+    }
+
+    async function triggerParse() {
+      const text = document.getElementById('betTextInput').value;
+      const sessionId = document.getElementById('agentSessionSelect').value;
+      const chipsContainer = document.getElementById('previewChipsContainer');
+      const countBadge = document.getElementById('previewCountBadge');
+      const totalAmtEl = document.getElementById('previewTotalAmt');
+      const commAmtEl = document.getElementById('previewCommAmt');
+      const netBankerEl = document.getElementById('previewNetBanker');
+      const errorBox = document.getElementById('parseErrors');
+      const submitBtn = document.getElementById('btnSubmitBet');
+
+      if (!text.trim()) {
+        currentParsedItems = [];
+        chipsContainer.innerHTML = `<div class="text-xs text-slate-600 italic py-4 w-full text-center">စာသားရိုက်ထည့်ပါက ဤနေရာတွင် အော်တို ဂဏန်းများ ဖြန့်ပေါ်လာပါမည်။</div>`;
+        countBadge.textContent = '0 ကွက်';
+        totalAmtEl.textContent = '0 Ks';
+        commAmtEl.textContent = '+0 Ks';
+        netBankerEl.textContent = '0 Ks';
+        errorBox.classList.add('hidden');
+        submitBtn.disabled = true;
+        submitBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            lottery_type: currentLotteryType,
+            session_id: sessionId
+          })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentParsedItems = data.items;
+          countBadge.textContent = `${data.itemCount} ကွက်`;
+          totalAmtEl.textContent = `${data.totalAmount.toLocaleString()} Ks`;
+
+          const commRate = authUser ? authUser.commission_rate : 15;
+          const commAmt = (data.totalAmount * commRate) / 100;
+          const netToBanker = data.totalAmount - commAmt;
+
+          commAmtEl.textContent = `+${commAmt.toLocaleString()} Ks`;
+          netBankerEl.textContent = `${netToBanker.toLocaleString()} Ks`;
+
+          if (data.items.length === 0) {
+            chipsContainer.innerHTML = `<div class="text-xs text-amber-500 py-3 w-full text-center">ဂဏန်းမရှိသေးပါ သို့မဟုတ် ပုံစံမမှန်ပါ</div>`;
+          } else {
+            chipsContainer.innerHTML = data.items.map(it => {
+              let badgeClass = 'bg-slate-800 border-slate-700 text-slate-200';
+              let warningTag = '';
+              if (it.isBlocked) {
+                badgeClass = 'bg-red-950/80 border-red-600 text-red-300';
+                warningTag = '<span class="text-[10px] text-red-400 font-bold ml-1">🚫 ပိတ်</span>';
+              } else if (it.warning) {
+                badgeClass = 'bg-amber-950/80 border-amber-600 text-amber-300';
+                warningTag = '<span class="text-[10px] text-amber-400 font-bold ml-1">⚠️ Limit</span>';
+              }
+
+              return `
+                <div class="badge-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${badgeClass}">
+                  <span class="text-amber-400 font-mono font-bold">${it.number}</span>
+                  <span class="text-slate-400">/</span>
+                  <span>${it.amount.toLocaleString()} Ks</span>
+                  ${warningTag}
+                </div>
+              `;
+            }).join('');
+          }
+
+          const hasBlocked = data.items.some(i => i.isBlocked);
+          if (data.errors.length > 0 || hasBlocked) {
+            errorBox.classList.remove('hidden');
+            let errorHtml = data.errors.map(e => `<div>⚠️ ${e}</div>`).join('');
+            if (hasBlocked) errorHtml += `<div class="font-bold text-red-400">🚫 ဒိုင်ပိတ်ထားသော ဂဏန်းများ ပါဝင်နေသောကြောင့် တင်၍ မရပါ!</div>`;
+            errorBox.innerHTML = errorHtml;
+          } else {
+            errorBox.classList.add('hidden');
+          }
+
+          if (data.items.length > 0 && !hasBlocked) {
+            submitBtn.disabled = false;
+            submitBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 shadow-lg cursor-pointer flex items-center justify-center gap-2';
+          } else {
+            submitBtn.disabled = true;
+            submitBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2';
+          }
+        }
+      } catch (err) {}
+    }
+
+    async function submitBetSlip() {
+      if (currentParsedItems.length === 0) return;
+      const sessionId = document.getElementById('agentSessionSelect').value;
+      const customerName = document.getElementById('customerNameInput').value.trim() || 'ထိုးသား (Telegram)';
+      const rawText = document.getElementById('betTextInput').value;
+
+      try {
+        const res = await fetch('/api/slips', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agent_id: authUser.id,
+            session_id: sessionId,
+            customer_name: customerName,
+            raw_text: rawText,
+            lottery_type: currentLotteryType,
+            items: currentParsedItems
+          })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('✅ ဒိုင်ဆီသို့ စလစ် တင်ပြီးပါပြီ!', 'success');
+          openTelegramSlipModal({
+            slipId: data.slipId,
+            customerName,
+            sessionName: document.getElementById('agentSessionSelect').selectedOptions[0].text,
+            items: currentParsedItems,
+            totalAmount: data.totalAmount
+          });
+
+          document.getElementById('betTextInput').value = '';
+          document.getElementById('customerNameInput').value = '';
+          triggerParse();
+          loadAgentSlips();
+        } else {
+          showToast(data.error || 'စာရင်းတင်၍ မအောင်မြင်ပါ', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    function openTelegramSlipModal(slip) {
+      const modal = document.getElementById('slipModal');
+      const textarea = document.getElementById('telegramSlipText');
+      const lines = [
+        `🧾 【 2D/3D ထိုးစာရင်း စလစ် #${slip.slipId} 】`,
+        `👤 ထိုးသား: ${slip.customerName}`,
+        `📅 ပွဲစဉ်: ${slip.sessionName}`,
+        `⏰ အချိန်: ${new Date().toLocaleTimeString('my-MM')}`,
+        `--------------------------------`,
+        ...slip.items.map(i => `▫️ ${i.number}  ➜  ${i.amount.toLocaleString()} Ks`),
+        `--------------------------------`,
+        `💰 စုစုပေါင်းထိုးငွေ: ${slip.totalAmount.toLocaleString()} Ks`,
+        `✅ ဒိုင်ဆီသို့ စာရင်းတင်သွင်းပြီးပါပြီ။`,
+        `✨ ကံကောင်းပါစေခင်ဗျာ! ✨`
+      ];
+      textarea.value = lines.join('\n');
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeSlipModal() {
+      document.getElementById('slipModal').classList.add('hidden');
+    }
+
+    function copyTelegramSlip() {
+      const textarea = document.getElementById('telegramSlipText');
+      textarea.select();
+      navigator.clipboard.writeText(textarea.value);
+      showToast('📋 Telegram စလစ်စာသား ကော်ပီကူးယူပြီးပါပြီ!', 'success');
+    }
+
+    function switchAgentTab(tab) {
+      const tabEntry = document.getElementById('agentTabEntry');
+      const tabSlips = document.getElementById('agentTabSlips');
+      const tabLedger = document.getElementById('agentTabLedger');
+
+      const btnEntry = document.getElementById('tabBtnAgentEntry');
+      const btnSlips = document.getElementById('tabBtnAgentSlips');
+      const btnLedger = document.getElementById('tabBtnAgentLedger');
+
+      tabEntry.classList.add('hidden');
+      tabSlips.classList.add('hidden');
+      tabLedger.classList.add('hidden');
+
+      btnEntry.className = 'pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2';
+      btnSlips.className = 'pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2';
+      btnLedger.className = 'pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2';
+
+      if (tab === 'entry') {
+        tabEntry.classList.remove('hidden');
+        btnEntry.className = 'pb-3 px-2 text-sm font-bold border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2';
+      } else if (tab === 'slips') {
+        tabSlips.classList.remove('hidden');
+        btnSlips.className = 'pb-3 px-2 text-sm font-bold border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2';
+        loadAgentSlips();
+      } else if (tab === 'ledger') {
+        tabLedger.classList.remove('hidden');
+        btnLedger.className = 'pb-3 px-2 text-sm font-bold border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2';
+        loadAgentLedger();
+      }
+      lucide.createIcons();
+    }
+
+    async function loadAgentSlips() {
+      try {
+        const res = await fetch(`/api/slips?agent_id=${authUser.id}`);
+        const json = await res.json();
+        const tbody = document.getElementById('agentSlipsTableBody');
+
+        if (json.success && json.data.length > 0) {
+          tbody.innerHTML = json.data.map(s => {
+            let winBadge = `<span class="px-2 py-0.5 rounded text-[11px] bg-slate-800 text-slate-400">စောင့်ဆိုင်းဆဲ</span>`;
+            if (s.session_status === 'settled') {
+              if (s.winner_count > 0) {
+                winBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🏆 ပေါက် (${s.total_win_amount.toLocaleString()} Ks)</span>`;
+              } else {
+                winBadge = `<span class="px-2 py-0.5 rounded text-[11px] bg-slate-800 text-slate-500">မပေါက်ပါ</span>`;
+              }
+            }
+
+            return `
+              <tr class="hover:bg-slate-800/40">
+                <td class="p-3 font-mono font-bold text-emerald-400">#${s.id}</td>
+                <td class="p-3 text-slate-400">${new Date(s.created_at).toLocaleTimeString('my-MM')}</td>
+                <td class="p-3 font-semibold text-white">${s.customer_name}</td>
+                <td class="p-3 text-slate-300">${s.session_name}</td>
+                <td class="p-3 font-semibold text-white">${s.total_amount.toLocaleString()} Ks</td>
+                <td class="p-3 text-emerald-400 font-bold">+${s.commission_amount.toLocaleString()} Ks</td>
+                <td class="p-3 text-amber-400">${s.net_to_banker.toLocaleString()} Ks</td>
+                <td class="p-3">${winBadge}</td>
+                <td class="p-3 text-right">
+                  <button onclick="viewSlipDetails(${s.id})" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-semibold text-[11px]">
+                    စလစ်ကြည့်မည်
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">တင်ထားသော စလစ်မရှိသေးပါ</td></tr>`;
+        }
+      } catch (err) {}
+    }
+
+    async function loadAgentLedger() {
+      try {
+        const res = await fetch(`/api/slips?agent_id=${authUser.id}`);
+        const json = await res.json();
+        if (json.success) {
+          let totalBet = 0, totalComm = 0, totalNet = 0, totalWin = 0;
+          json.data.forEach(s => {
+            totalBet += s.total_amount;
+            totalComm += s.commission_amount;
+            totalNet += s.net_to_banker;
+            totalWin += (s.total_win_amount || 0);
+          });
+          document.getElementById('agentStatTotalBet').textContent = `${totalBet.toLocaleString()} Ks`;
+          document.getElementById('agentStatComm').textContent = `+${totalComm.toLocaleString()} Ks`;
+          document.getElementById('agentStatNetToBanker').textContent = `${totalNet.toLocaleString()} Ks`;
+          document.getElementById('agentStatWinningPayout').textContent = `${totalWin.toLocaleString()} Ks`;
+        }
+      } catch (err) {}
+    }
+
+    async function viewSlipDetails(slipId) {
+      try {
+        const res = await fetch(`/api/slips/${slipId}`);
+        const json = await res.json();
+        if (json.success) {
+          openTelegramSlipModal({
+            slipId: json.data.id,
+            customerName: json.data.customer_name,
+            sessionName: json.data.session_name,
+            items: json.data.items,
+            totalAmount: json.data.total_amount
+          });
+        }
+      } catch (err) {
+        showToast('Failed to load slip', 'error');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = message;
+      if (type === 'success') {
+        toast.className = 'fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-2 bg-emerald-950 border-emerald-600 text-emerald-200';
+      } else if (type === 'error') {
+        toast.className = 'fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-2 bg-rose-950 border-rose-600 text-rose-200';
+      }
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+  </script>
+</body>
+</html>

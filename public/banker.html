@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ဒိုင်ချုပ်ကြီး Dashboard - 2D 3D Lottery Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Padauk', 'Inter', sans-serif; }
+  </style>
+  <script>
+    // Access Guard: Ensure user is logged in as Banker
+    const authUser = JSON.parse(localStorage.getItem('lottery_user') || 'null');
+    if (!authUser) {
+      window.location.href = '/login';
+    } else if (authUser.role !== 'banker') {
+      alert('ဒိုင်ချုပ်ကြီးသာ ဝင်ရောက်ခွင့်ရှိပါသည်!');
+      window.location.href = '/agent';
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center font-bold text-slate-950 text-xl shadow-lg">
+          👑
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white flex items-center gap-2">
+            ဒိုင်ချုပ် စီမံခန့်ခွဲရေး Dashboard
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Master Admin</span>
+          </h1>
+          <p class="text-xs text-slate-400">2D / 3D စာရင်းချုပ်နှင့် အန္တရာယ်စစ်ဆေးရေးစနစ်</p>
+        </div>
+      </div>
+
+      <!-- User Profile & Logout -->
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <div id="bankerNameDisplay" class="text-xs font-bold text-white">ဒိုင်ချုပ်ကြီး</div>
+          <div class="text-[10px] text-amber-400">Super Administrator</div>
+        </div>
+        <button onclick="logout()" class="px-3 py-1.5 bg-slate-800 hover:bg-rose-950/80 hover:text-rose-300 border border-slate-700 hover:border-rose-800 rounded-xl text-xs font-semibold text-slate-300 flex items-center gap-1.5 transition-all">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span>ထွက်မည်</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-1 space-y-6">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-3 transition-all">
+      <span id="toastMsg"></span>
+    </div>
+
+    <!-- Navigation Tabs for Banker -->
+    <div class="flex border-b border-slate-800 gap-4 overflow-x-auto">
+      <button onclick="switchBankerTab('overview')" id="tabBtnBankerOverview" class="pb-3 px-2 text-sm font-bold border-b-2 border-amber-500 text-amber-400 flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> ဒိုင်ချုပ် စာရင်းအင်း (Overview)
+      </button>
+      <button onclick="switchBankerTab('settle')" id="tabBtnBankerSettle" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="trophy" class="w-4 h-4"></i> ပေါက်ဂဏန်း သွင်းခြင်း (Settle)
+      </button>
+      <button onclick="switchBankerTab('limits')" id="tabBtnBankerLimits" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="shield-alert" class="w-4 h-4"></i> ဘရိတ် / ပိတ်ဂဏန်း (Limits)
+      </button>
+      <button onclick="switchBankerTab('agents')" id="tabBtnBankerAgents" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="users" class="w-4 h-4"></i> ကော်မရှင် အေးဂျင့်များ (Agents)
+      </button>
+      <button onclick="switchBankerTab('allslips')" id="tabBtnBankerSlips" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="list-ordered" class="w-4 h-4"></i> စလစ်များ အားလုံး (All Slips)
+      </button>
+    </div>
+
+    <!-- TAB 1: OVERVIEW & HEATMAP -->
+    <div id="bankerTabOverview" class="space-y-6">
+      
+      <!-- 5 Stats Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-slate-400">စုစုပေါင်း အထိုးကြေး (Gross)</span>
+          <div id="bStatGrossBet" class="text-2xl font-bold text-white mt-1">0 Ks</div>
+          <span id="bStatSlipCount" class="text-xs text-slate-500">0 စလစ်</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-emerald-400">ကော်မရှင် စရိတ် (Commissions)</span>
+          <div id="bStatCommission" class="text-2xl font-bold text-emerald-400 mt-1">-0 Ks</div>
+          <span class="text-xs text-slate-500">အေးဂျင့်များသို့ ပေးငွေ</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-amber-400">ဒိုင်လက်ကျန် ရောင်းရငွေ (Net)</span>
+          <div id="bStatNetSales" class="text-2xl font-bold text-amber-400 mt-1">0 Ks</div>
+          <span class="text-xs text-slate-500">Gross - Commission</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-rose-400">ပေါက်ငွေ အလျော် (Payouts)</span>
+          <div id="bStatPayout" class="text-2xl font-bold text-rose-400 mt-1">-0 Ks</div>
+          <span class="text-xs text-slate-500">ထိုးသားများသို့ လျော်ငွေ</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <span class="text-xs text-cyan-400 font-semibold">ဒိုင် အသားတင် အမြတ်/အရှုံး</span>
+          <div id="bStatNetProfit" class="text-2xl font-bold text-cyan-400 mt-1">0 Ks</div>
+          <span class="text-xs text-slate-500">Net Sales - Payout</span>
+        </div>
+      </div>
+
+      <!-- 2 Columns: Heatmap & Agents -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Risk Exposure Heatmap -->
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="flame" class="w-4 h-4 text-rose-500"></i>
+                အများဆုံးထိုးထားသော ဂဏန်းများ (Risk Exposure Heatmap)
+              </h3>
+              <p class="text-xs text-slate-400">ဒိုင်အတွက် အန္တရာယ်အများဆုံး ဂဏန်းစာရင်းချုပ်</p>
+            </div>
+            <button onclick="loadBankerDashboard()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+          <div id="bNumberHeatmap" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[350px] overflow-y-auto">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Agent Performance Breakdown -->
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i>
+            ကော်မရှင် အေးဂျင့်များအလိုက် စာရင်းချုပ်
+          </h3>
+          <div id="bAgentBreakdownList" class="space-y-3 max-h-[350px] overflow-y-auto">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 2: SETTLE RESULT -->
+    <div id="bankerTabSettle" class="hidden space-y-4">
+      <div class="max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-5">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+          ပေါက်ဂဏန်း သွင်းခြင်းနှင့် အော်တို ရှင်းတမ်းထုတ်ခြင်း
+        </h2>
+        <p class="text-xs text-slate-400">
+          ပေါက်ဂဏန်း ရိုက်ထည့်လိုက်သည်နှင့် စနစ်က အဆိုပါပွဲစဉ်တွင် ထိုးထားသမျှ စလစ်အားလုံးကို စစ်ဆေးပေးပြီး အနိုင်ရသူများအား အလိုအလျောက် ပေါက်ငွေ တွက်ချက်ပေးမည် ဖြစ်သည်။
+        </p>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">ပွဲစဉ်ရွေးချယ်ပါ</label>
+            <select id="settleSessionSelect" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">ပေါက်ဂဏန်း ထည့်သွင်းပါ (Winning Number)</label>
+            <input type="text" id="winningNumberInput" placeholder="ဥပမာ 2D: 45, 3D: 123" maxlength="3"
+                   class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-2xl font-bold font-mono tracking-widest text-amber-400 text-center focus:outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+
+          <button onclick="settleSession()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-slate-950 font-bold rounded-xl text-sm shadow-lg flex items-center justify-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            ပေါက်ဂဏန်း အတည်ပြုပြီး စာရင်းရှင်းမည် (Settle Now)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: LIMITS & BLOCKED NUMBERS -->
+    <div id="bankerTabLimits" class="hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i>
+            ဘရိတ် / ပိတ်ဂဏန်း အသစ် သတ်မှတ်ရန်
+          </h3>
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">ထီအမျိုးအစား</label>
+              <select id="limitTypeSelect" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+                <option value="2D">2D</option>
+                <option value="3D">3D</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">ဂဏန်း (ဥပမာ 95)</label>
+              <input type="text" id="limitNumberInput" placeholder="95" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+            </div>
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">အများဆုံး လက်ခံမည့် ပမာဏ (Limit Amount)</label>
+              <input type="number" id="limitAmountInput" placeholder="50000 (0 ထည့်ပါက လုံးဝ ပိတ်ပါမည်)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+              <span class="text-slate-500 text-[11px] block mt-1">* ပမာဏတွင် 0 ဟု ထည့်ပါက အဆိုပါဂဏန်းကို လုံးဝ ပိတ်ဂဏန်းအဖြစ် သတ်မှတ်မည်။</span>
+            </div>
+            <button onclick="addNumberLimit()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl">
+              သတ်မှတ်မည်
+            </button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+            လက်ရှိ သတ်မှတ်ထားသော ပိတ်ဂဏန်းနှင့် ဘရိတ်များ
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-800 text-slate-400 uppercase">
+                <tr>
+                  <th class="p-2.5">အမျိုးအစား</th>
+                  <th class="p-2.5">ဂဏန်း</th>
+                  <th class="p-2.5">သတ်မှတ်ချက်</th>
+                  <th class="p-2.5 text-right">ဖျက်မည်</th>
+                </tr>
+              </thead>
+              <tbody id="limitsTableBody" class="divide-y divide-slate-800">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: AGENTS -->
+    <div id="bankerTabAgents" class="hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i data-lucide="user-plus" class="w-4 h-4 text-emerald-400"></i>
+            ကော်မရှင် အေးဂျင့် အသစ်ဖွင့်ပေးရန်
+          </h3>
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">အေးဂျင့် အမည် (Name)</label>
+              <input type="text" id="newAgentName" placeholder="ကိုအောင်" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+            </div>
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">အကောင့် Username</label>
+              <input type="text" id="newAgentUsername" placeholder="agent3" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+            </div>
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">ကော်မရှင် ရာခိုင်နှုန်း (Commission %)</label>
+              <input type="number" id="newAgentComm" placeholder="15" value="15" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+            </div>
+            <button onclick="createAgent()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl">
+              အကောင့်ဖွင့်မည်
+            </button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-8 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i data-lucide="users" class="w-4 h-4 text-amber-400"></i>
+            ကော်မရှင် အေးဂျင့်များ စာရင်း
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-800 text-slate-400 uppercase">
+                <tr>
+                  <th class="p-2.5">အမည်</th>
+                  <th class="p-2.5">Username</th>
+                  <th class="p-2.5">ကော်မရှင် %</th>
+                  <th class="p-2.5">အခြေအနေ</th>
+                </tr>
+              </thead>
+              <tbody id="bankerAgentsTableBody" class="divide-y divide-slate-800">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: ALL SLIPS -->
+    <div id="bankerTabAllSlips" class="hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+            ဒိုင်ဆီသို့ တက်လာသမျှ စလစ်များ အားလုံး
+          </h3>
+          <button onclick="loadBankerSlips()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> အသစ်ပြန်ဖွင့်ရန်
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-800 text-slate-400 uppercase">
+              <tr>
+                <th class="p-3">စလစ် #</th>
+                <th class="p-3">အချိန်</th>
+                <th class="p-3">ကော်မရှင် (Agent)</th>
+                <th class="p-3">ထိုးသား</th>
+                <th class="p-3">ပွဲစဉ်</th>
+                <th class="p-3">အထိုးစုစုပေါင်း</th>
+                <th class="p-3">ကော်မရှင်</th>
+                <th class="p-3">ဒိုင်လက်ကျန်</th>
+                <th class="p-3">အခြေအနေ</th>
+              </tr>
+            </thead>
+            <tbody id="bankerAllSlipsTableBody" class="divide-y divide-slate-800">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // Init
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('bankerNameDisplay').textContent = authUser.name || 'ဒိုင်ချုပ်ကြီး';
+      await loadSessions();
+      loadBankerDashboard();
+      lucide.createIcons();
+    });
+
+    function logout() {
+      localStorage.removeItem('lottery_token');
+      localStorage.removeItem('lottery_user');
+      window.location.href = '/login';
+    }
+
+    // Tabs
+    function switchBankerTab(tab) {
+      const tabs = ['Overview', 'Settle', 'Limits', 'Agents', 'AllSlips'];
+      tabs.forEach(t => {
+        const tabEl = document.getElementById(`bankerTab${t}`);
+        const btnEl = document.getElementById(`tabBtnBanker${t}`);
+        if (t.toLowerCase() === tab.toLowerCase()) {
+          tabEl.classList.remove('hidden');
+          btnEl.className = 'pb-3 px-2 text-sm font-bold border-b-2 border-amber-500 text-amber-400 flex items-center gap-2 whitespace-nowrap';
+        } else {
+          tabEl.classList.add('hidden');
+          btnEl.className = 'pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap';
+        }
+      });
+
+      if (tab === 'overview') loadBankerDashboard();
+      if (tab === 'limits') loadNumberLimits();
+      if (tab === 'agents') loadBankerAgents();
+      if (tab === 'allslips') loadBankerSlips();
+      lucide.createIcons();
+    }
+
+    async function loadSessions() {
+      try {
+        const res = await fetch('/api/sessions');
+        const json = await res.json();
+        if (json.success) {
+          const settleSelect = document.getElementById('settleSessionSelect');
+          settleSelect.innerHTML = json.data.map(s => 
+            `<option value="${s.id}">[${s.lottery_type}] ${s.session_name} (${s.status === 'open' ? '🟢 ဖွင့်လှစ်ဆဲ' : '🔴 ပြီးဆုံး'})</option>`
+          ).join('');
+        }
+      } catch (err) {}
+    }
+
+    async function loadBankerDashboard() {
+      try {
+        const res = await fetch('/api/stats/banker');
+        const json = await res.json();
+        if (json.success) {
+          const s = json.summary;
+          document.getElementById('bStatGrossBet').textContent = `${s.total_bet_amount.toLocaleString()} Ks`;
+          document.getElementById('bStatSlipCount').textContent = `${s.total_slips} စလစ်`;
+          document.getElementById('bStatCommission').textContent = `-${s.total_commission.toLocaleString()} Ks`;
+          document.getElementById('bStatNetSales').textContent = `${s.total_net_sales.toLocaleString()} Ks`;
+          document.getElementById('bStatPayout').textContent = `-${s.total_payout.toLocaleString()} Ks`;
+          
+          const profitEl = document.getElementById('bStatNetProfit');
+          profitEl.textContent = `${s.net_profit >= 0 ? '+' : ''}${s.net_profit.toLocaleString()} Ks`;
+          profitEl.className = `text-2xl font-bold mt-1 ${s.net_profit >= 0 ? 'text-emerald-400' : 'text-rose-500'}`;
+
+          // Heatmap
+          const heatmapEl = document.getElementById('bNumberHeatmap');
+          if (json.numberBreakdown.length > 0) {
+            heatmapEl.innerHTML = json.numberBreakdown.map(nb => `
+              <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                <span class="text-base font-bold font-mono text-amber-400">${nb.number}</span>
+                <div class="text-right">
+                  <span class="text-xs font-semibold text-white block">${nb.total_amount.toLocaleString()} Ks</span>
+                  <span class="text-[10px] text-slate-500">${nb.bet_count} ကြိမ်</span>
+                </div>
+              </div>
+            `).join('');
+          } else {
+            heatmapEl.innerHTML = `<div class="col-span-3 text-center text-slate-500 py-6 text-xs">အထိုးစာရင်း မရှိသေးပါ</div>`;
+          }
+
+          // Agent Breakdown
+          const agentListEl = document.getElementById('bAgentBreakdownList');
+          if (json.agentBreakdown.length > 0) {
+            agentListEl.innerHTML = json.agentBreakdown.map(ab => `
+              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="font-bold text-white">${ab.name}</span>
+                  <span class="text-emerald-400 font-semibold">${ab.commission_rate}% Comm</span>
+                </div>
+                <div class="flex justify-between text-xs text-slate-400">
+                  <span>အထိုး: ${ab.total_amount.toLocaleString()} Ks (${ab.slips_count} စလစ်)</span>
+                  <span class="text-amber-400">ဒိုင်ရ: ${ab.net_to_banker.toLocaleString()} Ks</span>
+                </div>
+              </div>
+            `).join('');
+          } else {
+            agentListEl.innerHTML = `<div class="text-center text-slate-500 py-6 text-xs">အေးဂျင့် မရှိသေးပါ</div>`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    async function settleSession() {
+      const sessionId = document.getElementById('settleSessionSelect').value;
+      const winningNumber = document.getElementById('winningNumberInput').value.trim();
+      if (!winningNumber) return showToast('ပေါက်ဂဏန်း ထည့်သွင်းပေးပါ', 'error');
+
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}/settle`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ winning_number: winningNumber })
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast(`🏆 ${json.message} (ပေါက်သူ: ${json.win_count} ဦး / လျော်ငွေ: ${json.total_win_payout.toLocaleString()} Ks)`, 'success');
+          loadSessions();
+          loadBankerDashboard();
+        } else {
+          showToast(json.error || 'စာရင်းရှင်းမအောင်မြင်ပါ', 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    async function loadNumberLimits() {
+      try {
+        const res = await fetch('/api/limits');
+        const json = await res.json();
+        const tbody = document.getElementById('limitsTableBody');
+        if (json.success && json.data.length > 0) {
+          tbody.innerHTML = json.data.map(l => `
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-2.5 font-bold text-amber-400">${l.lottery_type}</td>
+              <td class="p-2.5 font-mono font-bold text-white text-sm">${l.number}</td>
+              <td class="p-2.5">
+                ${l.max_amount === 0 
+                  ? '<span class="px-2 py-0.5 bg-red-950 border border-red-800 text-red-300 rounded font-bold text-[10px]">🚫 လုံးဝပိတ်ဂဏန်း</span>' 
+                  : `<span class="text-amber-300 font-semibold">${l.max_amount.toLocaleString()} Ks Limit</span>`}
+              </td>
+              <td class="p-2.5 text-right">
+                <button onclick="deleteLimit(${l.id})" class="text-red-400 hover:text-red-300 text-xs font-semibold">ဖျက်မည်</button>
+              </td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500">သတ်မှတ်ချက် မရှိသေးပါ</td></tr>`;
+        }
+      } catch (err) {}
+    }
+
+    async function addNumberLimit() {
+      const type = document.getElementById('limitTypeSelect').value;
+      const number = document.getElementById('limitNumberInput').value.trim();
+      const maxAmount = document.getElementById('limitAmountInput').value;
+      if (!number || maxAmount === '') return showToast('ဂဏန်းနှင့် Limit ပမာဏ ထည့်သွင်းပါ', 'error');
+
+      try {
+        const res = await fetch('/api/limits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lottery_type: type, number, max_amount: parseFloat(maxAmount) })
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast('ဘရိတ်/ပိတ်ဂဏန်း သတ်မှတ်ပြီးပါပြီ', 'success');
+          document.getElementById('limitNumberInput').value = '';
+          document.getElementById('limitAmountInput').value = '';
+          loadNumberLimits();
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    async function deleteLimit(id) {
+      try {
+        await fetch(`/api/limits/${id}`, { method: 'DELETE' });
+        loadNumberLimits();
+        showToast('ဖျက်ပြီးပါပြီ', 'success');
+      } catch (err) {}
+    }
+
+    async function loadBankerAgents() {
+      try {
+        const res = await fetch('/api/users');
+        const json = await res.json();
+        const tbody = document.getElementById('bankerAgentsTableBody');
+        if (json.success) {
+          const agents = json.data.filter(u => u.role === 'agent');
+          tbody.innerHTML = agents.map(a => `
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-2.5 font-bold text-white">${a.name}</td>
+              <td class="p-2.5 text-slate-400 font-mono">${a.username}</td>
+              <td class="p-2.5 text-emerald-400 font-bold">${a.commission_rate}%</td>
+              <td class="p-2.5">
+                <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Active</span>
+              </td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {}
+    }
+
+    async function createAgent() {
+      const name = document.getElementById('newAgentName').value.trim();
+      const username = document.getElementById('newAgentUsername').value.trim();
+      const comm = parseFloat(document.getElementById('newAgentComm').value) || 15;
+      if (!name || !username) return showToast('အမည်နှင့် Username ထည့်သွင်းပါ', 'error');
+
+      try {
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, username, commission_rate: comm, role: 'agent' })
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast('အေးဂျင့်အကောင့် ဖွင့်ပေးပြီးပါပြီ!', 'success');
+          document.getElementById('newAgentName').value = '';
+          document.getElementById('newAgentUsername').value = '';
+          loadBankerAgents();
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    async function loadBankerSlips() {
+      try {
+        const res = await fetch('/api/slips');
+        const json = await res.json();
+        const tbody = document.getElementById('bankerAllSlipsTableBody');
+        if (json.success && json.data.length > 0) {
+          tbody.innerHTML = json.data.map(s => `
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-mono font-bold text-amber-400">#${s.id}</td>
+              <td class="p-3 text-slate-400">${new Date(s.created_at).toLocaleTimeString('my-MM')}</td>
+              <td class="p-3 font-bold text-emerald-400">${s.agent_name}</td>
+              <td class="p-3 text-white font-medium">${s.customer_name}</td>
+              <td class="p-3 text-slate-300">${s.session_name}</td>
+              <td class="p-3 font-bold text-white">${s.total_amount.toLocaleString()} Ks</td>
+              <td class="p-3 text-emerald-400">-${s.commission_amount.toLocaleString()} Ks</td>
+              <td class="p-3 text-amber-300 font-bold">${s.net_to_banker.toLocaleString()} Ks</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">${s.session_status}</span>
+              </td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">စလစ် မရှိသေးပါ</td></tr>`;
+        }
+      } catch (err) {}
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = message;
+      if (type === 'success') {
+        toast.className = 'fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-2 bg-emerald-950 border-emerald-600 text-emerald-200';
+      } else if (type === 'error') {
+        toast.className = 'fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-2 bg-rose-950 border-rose-600 text-rose-200';
+      }
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+  </script>
+</body>
+</html>
