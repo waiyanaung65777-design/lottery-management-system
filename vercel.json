@@ -1,7 +1,10 @@
 {
   "version": 2,
-  "cleanUrls": true,
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
+    },
     {
       "source": "/",
       "destination": "/login.html"
@@ -17,10 +20,6 @@
     {
       "source": "/agent",
       "destination": "/agent.html"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
     }
   ]
 }

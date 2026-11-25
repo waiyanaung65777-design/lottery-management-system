@@ -12,6 +12,19 @@ const sendFileOptions = { dotfiles: 'allow' };
 
 app.use(cors());
 app.use(express.json());
+// Ensure DB is initialized before any request (important on Vercel serverless)
+let dbReady = false;
+app.use(async (req, res, next) => {
+  if (!dbReady) {
+    try {
+      await initDB();
+      dbReady = true;
+    } catch (e) {
+      console.error('DB ready error:', e);
+    }
+  }
+  next();
+});
 // Allow dotfiles because project path contains '.gemini'
 app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }));
 
