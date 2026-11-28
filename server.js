@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const { initDB, run, get, all } = require('./db');
 const { parseBets } = require('./parser');
-const { loginUser, isSupabaseConfigured } = require('./auth');
+const { loginUser, createAgentAccount, isSupabaseConfigured } = require('./auth');
 const { getBangkokNow, getBangkokDateStr, formatBangkokDateTime, checkSessionBettingAllowed } = require('./timeUtils');
 
 const app = express();
@@ -98,7 +98,7 @@ app.post('/api/auth/login', async (req, res) => {
 // ----------------------
 app.get('/api/users', async (req, res) => {
   try {
-    const users = await all(`SELECT id, username, name, role, commission_rate, payout_multiplier_2d, payout_multiplier_3d, credit_limit, status FROM users`);
+    const users = await all(`SELECT id, username, email, password, name, role, commission_rate, payout_multiplier_2d, payout_multiplier_3d, credit_limit, status FROM users`);
     res.json({ success: true, data: users });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -107,15 +107,27 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
   try {
-    const { username, name, role = 'agent', commission_rate = 15.0, credit_limit = 1000000 } = req.body;
-    if (!username || !name) {
-      return res.status(400).json({ success: false, error: 'Username and Name are required.' });
+    const { username, email, password, name, commission_rate = 15.0, credit_limit = 1000000 } = req.body;
+    const finalEmail = email || (username ? (username.includes('@') ? username : `${username}@2d.com`) : '');
+    const finalPassword = password || 'Asdf1234!@#$';
+
+    if (!name || !finalEmail) {
+      return res.status(400).json({ success: false, error: 'အေးဂျင့် အမည် နှင့် Email ထည့်သွင်းပေးပါ' });
     }
-    const result = await run(
-      `INSERT INTO users (username, name, role, commission_rate, credit_limit) VALUES (?, ?, ?, ?, ?)`,
-      [username, name, role, commission_rate, credit_limit]
-    );
-    res.json({ success: true, id: result.id, message: 'Agent created successfully' });
+
+    const created = await createAgentAccount({
+      name,
+      email: finalEmail,
+      password: finalPassword,
+      commission_rate,
+      credit_limit
+    });
+
+    res.json({
+      success: true,
+      data: created,
+      message: `ကော်မရှင် အေးဂျင့် (${name}) အကောင့် ဖွင့်ပေးပြီးပါပြီ!`
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

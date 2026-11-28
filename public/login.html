@@ -38,10 +38,10 @@
 
       <form id="loginForm" class="space-y-4" onsubmit="handleLogin(event)">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1.5">အကောင့် အီးမေးလ် သို့မဟုတ် Username</label>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">အကောင့် အီးမေးလ် (Email သို့မဟုတ် Username)</label>
           <div class="relative">
-            <i data-lucide="user" class="w-4 h-4 text-slate-500 absolute left-3.5 top-3"></i>
-            <input type="text" id="usernameInput" required placeholder="admin သို့မဟုတ် agent1" 
+            <i data-lucide="mail" class="w-4 h-4 text-slate-500 absolute left-3.5 top-3"></i>
+            <input type="text" id="usernameInput" required placeholder="admin@2d.com သို့မဟုတ် agent@2d.com" 
                    class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
           </div>
         </div>
@@ -50,7 +50,7 @@
           <label class="block text-xs font-semibold text-slate-300 mb-1.5">စကားဝှက် (Password)</label>
           <div class="relative">
             <i data-lucide="lock" class="w-4 h-4 text-slate-500 absolute left-3.5 top-3"></i>
-            <input type="password" id="passwordInput" placeholder="••••••••" 
+            <input type="password" id="passwordInput" placeholder="Asdf1234!@#$" 
                    class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
           </div>
         </div>
@@ -64,33 +64,24 @@
 
       <!-- Quick Demo Login Presets -->
       <div class="border-t border-slate-800 pt-5 space-y-3">
-        <span class="block text-center text-xs text-slate-500 font-medium">စမ်းသပ်ရန်အတွက် ချက်ချင်း ဝင်နိုင်သော အကောင့်များ:</span>
-        <div class="grid grid-cols-1 gap-2">
-          <button type="button" onclick="quickLogin('admin')" 
-                  class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between">
+        <span class="block text-center text-xs text-slate-400 font-medium">သတ်မှတ်ထားသော အကောင့်များဖြင့် ချက်ချင်းဝင်ရန်:</span>
+        <div class="grid grid-cols-1 gap-2.5">
+          <button type="button" onclick="quickLogin('admin@2d.com', 'Asdf1234!@#$')" 
+                  class="w-full py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-amber-500/40 text-amber-300 text-xs font-semibold flex items-center justify-between transition-all">
             <span class="flex items-center gap-2">
               <i data-lucide="shield" class="w-4 h-4 text-amber-400"></i>
-              ဒိုင်ချုပ်ကြီး အကောင့် (Banker Dashboard)
+              ဒိုင်ချုပ်ကြီး (admin@2d.com)
             </span>
-            <span class="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded text-amber-300">admin</span>
+            <span class="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded text-amber-300 font-mono">Password: Asdf1234!@#$</span>
           </button>
 
-          <button type="button" onclick="quickLogin('agent1')" 
-                  class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between">
+          <button type="button" onclick="quickLogin('agent@2d.com', 'Asdf1234!@#$')" 
+                  class="w-full py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center justify-between transition-all">
             <span class="flex items-center gap-2">
               <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
-              ကော်မရှင် ကိုအောင် (Agent 1 - 15%)
+              ကော်မရှင် အေးဂျင့် (agent@2d.com)
             </span>
-            <span class="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300">agent1</span>
-          </button>
-
-          <button type="button" onclick="quickLogin('agent2')" 
-                  class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center justify-between">
-            <span class="flex items-center gap-2">
-              <i data-lucide="user" class="w-4 h-4 text-cyan-400"></i>
-              ကော်မရှင် ကိုကျော် (Agent 2 - 12%)
-            </span>
-            <span class="text-[10px] bg-cyan-500/20 px-2 py-0.5 rounded text-cyan-300">agent2</span>
+            <span class="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300 font-mono">Password: Asdf1234!@#$</span>
           </button>
         </div>
       </div>
@@ -130,10 +121,10 @@
       } catch (err) {}
     }
 
-    async function quickLogin(username) {
+    async function quickLogin(username, password = 'Asdf1234!@#$') {
       document.getElementById('usernameInput').value = username;
-      document.getElementById('passwordInput').value = '123456';
-      await performLogin(username, '123456');
+      document.getElementById('passwordInput').value = password;
+      await performLogin(username, password);
     }
 
     async function handleLogin(e) {

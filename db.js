@@ -45,9 +45,8 @@ function getPastDays(count = 7) {
 // In-Memory Data Store with 7-Day History Seeded
 const memoryStore = {
   users: [
-    { id: 1, username: 'admin', name: 'ဒိုင်ချုပ်ကြီး (Master)', role: 'banker', commission_rate: 0, payout_multiplier_2d: 85, payout_multiplier_3d: 600, credit_limit: 1000000, status: 'active' },
-    { id: 2, username: 'agent1', name: 'ကိုအောင် (Agent 1)', role: 'agent', commission_rate: 15.0, payout_multiplier_2d: 85, payout_multiplier_3d: 600, credit_limit: 1000000, status: 'active' },
-    { id: 3, username: 'agent2', name: 'ကိုကျော် (Agent 2)', role: 'agent', commission_rate: 12.0, payout_multiplier_2d: 85, payout_multiplier_3d: 600, credit_limit: 1000000, status: 'active' }
+    { id: 1, email: 'admin@2d.com', username: 'admin', password: 'Asdf1234!@#$', name: 'ဒိုင်ချုပ်ကြီး (Master)', role: 'banker', commission_rate: 0, payout_multiplier_2d: 85, payout_multiplier_3d: 600, credit_limit: 1000000, status: 'active' },
+    { id: 2, email: 'agent@2d.com', username: 'agent', password: 'Asdf1234!@#$', name: 'ကော်မရှင် ကိုအောင် (Agent 1)', role: 'agent', commission_rate: 15.0, payout_multiplier_2d: 85, payout_multiplier_3d: 600, credit_limit: 1000000, status: 'active' }
   ],
   sessions: [],
   number_limits: [
@@ -231,15 +230,31 @@ function runMemory(sql, params) {
 
   if (cleanSql.startsWith('INSERT INTO USERS')) {
     const id = memoryStore.users.length + 1;
-    memoryStore.users.push({
-      id,
-      username: params[0],
-      name: params[1],
-      role: params[2] || 'agent',
-      commission_rate: params[3] || 15.0,
-      credit_limit: params[4] || 1000000,
-      status: 'active'
-    });
+    if (params.length >= 6) {
+      memoryStore.users.push({
+        id,
+        username: params[0],
+        email: params[1],
+        password: params[2],
+        name: params[3],
+        role: 'agent',
+        commission_rate: params[4] || 15.0,
+        credit_limit: params[5] || 1000000,
+        status: 'active'
+      });
+    } else {
+      memoryStore.users.push({
+        id,
+        username: params[0],
+        email: `${params[0]}@2d.com`,
+        password: 'Asdf1234!@#$',
+        name: params[1],
+        role: params[2] || 'agent',
+        commission_rate: params[3] || 15.0,
+        credit_limit: params[4] || 1000000,
+        status: 'active'
+      });
+    }
     return Promise.resolve({ id });
   }
 
@@ -436,9 +451,18 @@ async function initDB() {
     `);
 
     // Safe column migrations for existing SQLite databases
+    try { await run(`ALTER TABLE users ADD COLUMN email TEXT;`); } catch(e){}
+    try { await run(`ALTER TABLE users ADD COLUMN password TEXT;`); } catch(e){}
     try { await run(`ALTER TABLE sessions ADD COLUMN session_date TEXT;`); } catch(e){}
     try { await run(`ALTER TABLE sessions ADD COLUMN close_time TEXT;`); } catch(e){}
     try { await run(`ALTER TABLE sessions ADD COLUMN result_time TEXT;`); } catch(e){}
+
+    // Backfill preset email and passwords for existing users
+    try {
+      await run(`UPDATE users SET email = 'admin@2d.com', password = 'Asdf1234!@#$' WHERE username = 'admin' AND (email IS NULL OR email = '');`);
+      await run(`UPDATE users SET email = 'agent@2d.com', password = 'Asdf1234!@#$' WHERE (username = 'agent' OR username = 'agent1') AND (email IS NULL OR email = '');`);
+      await run(`UPDATE users SET email = username || '@2d.com', password = 'Asdf1234!@#$' WHERE (email IS NULL OR email = '');`);
+    } catch(e){}
 
     await run(`
       CREATE TABLE IF NOT EXISTS number_limits (
