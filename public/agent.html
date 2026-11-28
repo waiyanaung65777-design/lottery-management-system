@@ -384,16 +384,24 @@
       } catch (e) {}
     }
 
-    function getNowBangkok() {
-      return new Date(Date.now() + serverTimeDelta);
+    function getNowBangkokMs() {
+      return Date.now() + serverTimeDelta;
     }
 
     // Bangkok Clock & Countdown Update
     function updateClock() {
-      const now = getNowBangkok();
+      const nowMs = getNowBangkokMs();
+      const now = new Date(nowMs);
       const clockEl = document.getElementById('bangkokClock');
       if (clockEl) {
-        clockEl.textContent = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Bangkok', hour12: true });
+        const timeStr = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Bangkok',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }).format(now);
+        clockEl.textContent = `${timeStr} ICT`;
       }
 
       // Check current selected session status
@@ -404,11 +412,11 @@
       const session = allSessionsList.find(s => s.id === sessId);
       if (!session) return;
 
-      updateCutoffUI(session, now);
+      updateCutoffUI(session, nowMs);
     }
     setInterval(updateClock, 1000);
 
-    function updateCutoffUI(session, now) {
+    function updateCutoffUI(session, nowMs) {
       const banner = document.getElementById('sessionStatusBanner');
       const dot = document.getElementById('sessionStatusDot');
       const title = document.getElementById('sessionStatusTitle');
@@ -429,14 +437,23 @@
 
       // 2D Session (Morning: 12:00 PM cutoff, Evening: 04:00 PM cutoff)
       const isMorning = session.session_name.includes('မနက်') || session.session_name.includes('12:00');
-      const cutoffHour = isMorning ? 12 : 16;
       const cutoffLabel = isMorning ? '12:00 PM' : '04:00 PM';
       const resultLabel = isMorning ? '12:30 PM' : '04:30 PM';
 
-      const cutoffTime = new Date(now);
-      cutoffTime.setHours(cutoffHour, 0, 0, 0);
+      // Parse target cutoff ISO with strict +07:00 Bangkok offset
+      let closeMs = 0;
+      if (session.close_time) {
+        const iso = session.close_time.includes('+') || session.close_time.includes('Z') 
+          ? session.close_time 
+          : `${session.close_time}+07:00`;
+        closeMs = new Date(iso).getTime();
+      } else {
+        const dStr = session.session_date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date(nowMs));
+        const hourStr = isMorning ? '12:00:00' : '16:00:00';
+        closeMs = new Date(`${dStr}T${hourStr}+07:00`).getTime();
+      }
 
-      const diffSec = Math.floor((cutoffTime.getTime() - now.getTime()) / 1000);
+      const diffSec = Math.floor((closeMs - nowMs) / 1000);
 
       if (session.status !== 'open' || diffSec <= 0) {
         // CLOSED / RESTRICTED!
@@ -457,10 +474,14 @@
         dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
         title.innerHTML = `<span class="font-bold text-emerald-300">🟢 အထိုးဖွင့်လှစ်ဆဲ</span> (${cutoffLabel} မတိုင်မီ အထိုးပိတ်မည် - ထွက်ဂဏန်း ${resultLabel})`;
         
-        const mins = Math.floor(diffSec / 60);
+        const hours = Math.floor(diffSec / 3600);
+        const mins = Math.floor((diffSec % 3600) / 60);
         const secs = diffSec % 60;
+        const timeRemainingText = hours > 0
+          ? `⏳ ${hours} နာရီ ${mins} မိနစ် ${secs < 10 ? '0' : ''}${secs} စက္ကန့် ကျန်`
+          : `⏳ ${mins} မိနစ် ${secs < 10 ? '0' : ''}${secs} စက္ကန့် ကျန်`;
         badge.className = 'font-mono font-bold px-2.5 py-1 rounded-md bg-slate-900 text-amber-300 border border-slate-800';
-        badge.textContent = `⏳ ${mins} မိနစ် ${secs < 10 ? '0' : ''}${secs} စက္ကန့် ကျန်`;
+        badge.textContent = timeRemainingText;
 
         textInput.disabled = false;
         textInput.placeholder = "ဥပမာ-\n45 R 200\n95 1000\n12, 34, 56 - 500";

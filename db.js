@@ -30,14 +30,10 @@ if (sqlite3) {
 // Generate past 7 days dates in Bangkok time
 function getPastDays(count = 7) {
   const days = [];
-  const bkk = getBangkokNow();
+  const now = new Date();
   for (let i = count - 1; i >= 0; i--) {
-    const d = new Date(bkk);
-    d.setDate(d.getDate() - i);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    days.push(`${y}-${m}-${day}`);
+    const d = new Date(now.getTime() - i * 86400000);
+    days.push(getBangkokDateStr(d));
   }
   return days;
 }

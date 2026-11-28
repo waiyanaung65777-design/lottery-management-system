@@ -648,7 +648,14 @@
       const now = new Date(Date.now() + bankerServerDelta);
       const clockEl = document.getElementById('bankerBangkokClock');
       if (clockEl) {
-        clockEl.textContent = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Bangkok', hour12: true });
+        const timeStr = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Bangkok',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }).format(now);
+        clockEl.textContent = `${timeStr} ICT`;
       }
     }
     setInterval(updateBankerClock, 1000);

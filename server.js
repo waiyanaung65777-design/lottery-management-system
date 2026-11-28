@@ -4,7 +4,7 @@ const path = require('path');
 const { initDB, run, get, all } = require('./db');
 const { parseBets } = require('./parser');
 const { loginUser, createAgentAccount, isSupabaseConfigured } = require('./auth');
-const { getBangkokNow, getBangkokDateStr, formatBangkokDateTime, checkSessionBettingAllowed } = require('./timeUtils');
+const { getBangkokComponents, getBangkokDateStr, formatBangkokDateTime, getBangkokNow, checkSessionBettingAllowed } = require('./timeUtils');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,17 +62,22 @@ app.get('/api/auth/status', (req, res) => {
   });
 });
 
-// Bangkok Time API (Real Time in Asia/Bangkok, UTC+7)
+// Bangkok Time API (Real Time in Asia/Bangkok, ICT UTC+7)
 app.get('/api/time', (req, res) => {
-  const bkk = getBangkokNow();
+  const now = new Date();
+  const bkk = getBangkokComponents(now);
   res.json({
     success: true,
     timezone: 'Asia/Bangkok',
-    iso: bkk.toISOString(),
-    date_str: getBangkokDateStr(bkk),
-    time_str: bkk.toLocaleTimeString('en-US', { hour12: true }),
-    formatted: formatBangkokDateTime(bkk),
-    timestamp: bkk.getTime()
+    timezone_label: 'ICT (Indochina Time, Thailand UTC+7)',
+    timestamp: now.getTime(),
+    server_timestamp: now.getTime(),
+    bangkok_date: bkk.dateStr,
+    bangkok_time_12h: bkk.time12,
+    bangkok_time_24h: bkk.time24,
+    date_str: bkk.dateStr,
+    time_str: bkk.time12,
+    formatted: formatBangkokDateTime(now)
   });
 });
 
@@ -152,7 +157,7 @@ app.put('/api/users/:id', async (req, res) => {
 app.get('/api/sessions', async (req, res) => {
   try {
     const sessions = await all(`SELECT * FROM sessions ORDER BY id DESC`);
-    const now = getBangkokNow();
+    const now = new Date();
     const enhanced = sessions.map(s => {
       const check = checkSessionBettingAllowed(s, now);
       return {
@@ -167,7 +172,7 @@ app.get('/api/sessions', async (req, res) => {
     res.json({
       success: true,
       data: enhanced,
-      bangkok_time: now.toISOString(),
+      bangkok_time_iso: now.toISOString(),
       bangkok_time_formatted: formatBangkokDateTime(now)
     });
   } catch (err) {
