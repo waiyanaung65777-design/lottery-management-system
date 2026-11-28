@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { getBangkokNow, getBangkokDateStr, checkSessionBettingAllowed } = require('./timeUtils');
+const { getBangkokDateStr, checkSessionBettingAllowed } = require('./timeUtils');
 
 let sqlite3 = null;
 try {

@@ -452,13 +452,13 @@ app.get('/api/slips', async (req, res) => {
     let slips = await all(query, params);
 
     // Apply Bangkok Time Date Filtering (Preserving 7-day history)
-    const todayStr = getBangkokDateStr();
-    const yesterdayDate = new Date(getBangkokNow());
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const nowDate = new Date();
+    const todayStr = getBangkokDateStr(nowDate);
+
+    const yesterdayDate = new Date(nowDate.getTime() - 86400000);
     const yesterdayStr = getBangkokDateStr(yesterdayDate);
 
-    const weekAgoDate = new Date(getBangkokNow());
-    weekAgoDate.setDate(weekAgoDate.getDate() - 7);
+    const weekAgoDate = new Date(nowDate.getTime() - 7 * 86400000);
     const weekAgoStr = getBangkokDateStr(weekAgoDate);
 
     if (period === 'today') {
