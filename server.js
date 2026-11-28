@@ -4,6 +4,7 @@ const path = require('path');
 const { initDB, run, get, all } = require('./db');
 const { parseBets } = require('./parser');
 const { loginUser, isSupabaseConfigured } = require('./auth');
+const { getBangkokNow, getBangkokDateStr, formatBangkokDateTime, checkSessionBettingAllowed } = require('./timeUtils');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,6 +59,20 @@ app.get('/api/auth/status', (req, res) => {
     message: isSupabaseConfigured
       ? 'Supabase Cloud Auth Active ⚡'
       : 'Local Auth Active (Ready for Supabase credentials)'
+  });
+});
+
+// Bangkok Time API (Real Time in Asia/Bangkok, UTC+7)
+app.get('/api/time', (req, res) => {
+  const bkk = getBangkokNow();
+  res.json({
+    success: true,
+    timezone: 'Asia/Bangkok',
+    iso: bkk.toISOString(),
+    date_str: getBangkokDateStr(bkk),
+    time_str: bkk.toLocaleTimeString('en-US', { hour12: true }),
+    formatted: formatBangkokDateTime(bkk),
+    timestamp: bkk.getTime()
   });
 });
 
@@ -125,7 +140,24 @@ app.put('/api/users/:id', async (req, res) => {
 app.get('/api/sessions', async (req, res) => {
   try {
     const sessions = await all(`SELECT * FROM sessions ORDER BY id DESC`);
-    res.json({ success: true, data: sessions });
+    const now = getBangkokNow();
+    const enhanced = sessions.map(s => {
+      const check = checkSessionBettingAllowed(s, now);
+      return {
+        ...s,
+        can_bet: check.canBet,
+        remaining_seconds: check.remainingSeconds,
+        cutoff_time: check.cutoffTime || (s.session_name.includes('12:00') ? '12:00 PM' : '04:00 PM'),
+        result_time: check.resultTime || (s.session_name.includes('12:30') ? '12:30 PM' : '04:30 PM'),
+        reason: check.reason || null
+      };
+    });
+    res.json({
+      success: true,
+      data: enhanced,
+      bangkok_time: now.toISOString(),
+      bangkok_time_formatted: formatBangkokDateTime(now)
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -314,6 +346,18 @@ app.post('/api/slips', async (req, res) => {
       return res.status(400).json({ success: false, error: 'လိုအပ်သော အချက်အလက်များ မပြည့်စုံပါ' });
     }
 
+    // Strict Bangkok Cutoff Enforcement (12:00 PM / 04:00 PM)
+    const session = await get(`SELECT * FROM sessions WHERE id = ?`, [session_id]);
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found' });
+
+    const timeCheck = checkSessionBettingAllowed(session);
+    if (!timeCheck.canBet) {
+      return res.status(400).json({
+        success: false,
+        error: `🛑 အထိုးပိတ်သွားပါပြီ! ${timeCheck.reason}`
+      });
+    }
+
     // Get Agent commission rate
     const agent = await get(`SELECT * FROM users WHERE id = ?`, [agent_id]);
     if (!agent) return res.status(404).json({ success: false, error: 'Agent not found' });
@@ -367,7 +411,7 @@ app.post('/api/slips', async (req, res) => {
 
 app.get('/api/slips', async (req, res) => {
   try {
-    const { agent_id, session_id } = req.query;
+    const { agent_id, session_id, period, date } = req.query;
     let query = `
       SELECT s.*, u.name as agent_name, ses.session_name, ses.winning_number, ses.status as session_status,
       (SELECT COUNT(*) FROM slip_items WHERE slip_id = s.id AND is_winner = 1) as winner_count,
@@ -386,10 +430,39 @@ app.get('/api/slips', async (req, res) => {
       query += ` AND s.session_id = ?`;
       params.push(session_id);
     }
-    query += ` ORDER BY s.id DESC LIMIT 100`;
+    query += ` ORDER BY s.id DESC LIMIT 300`;
 
-    const slips = await all(query, params);
-    res.json({ success: true, data: slips });
+    let slips = await all(query, params);
+
+    // Apply Bangkok Time Date Filtering (Preserving 7-day history)
+    const todayStr = getBangkokDateStr();
+    const yesterdayDate = new Date(getBangkokNow());
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = getBangkokDateStr(yesterdayDate);
+
+    const weekAgoDate = new Date(getBangkokNow());
+    weekAgoDate.setDate(weekAgoDate.getDate() - 7);
+    const weekAgoStr = getBangkokDateStr(weekAgoDate);
+
+    if (period === 'today') {
+      slips = slips.filter(s => (s.created_at || '').startsWith(todayStr));
+    } else if (period === 'yesterday') {
+      slips = slips.filter(s => (s.created_at || '').startsWith(yesterdayStr));
+    } else if (period === 'week' || period === '7days') {
+      slips = slips.filter(s => {
+        const slipDate = (s.created_at || '').substring(0, 10);
+        return slipDate >= weekAgoStr;
+      });
+    } else if (date) {
+      slips = slips.filter(s => (s.created_at || '').startsWith(date));
+    }
+
+    res.json({
+      success: true,
+      data: slips,
+      total_count: slips.length,
+      current_bangkok_date: todayStr
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

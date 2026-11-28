@@ -12,7 +12,7 @@
     .badge-chip { transition: all 0.15s ease-in-out; }
   </style>
   <script>
-    // Access Guard: Ensure user is logged in
+    // Access Guard
     const authUser = JSON.parse(localStorage.getItem('lottery_user') || 'null');
     if (!authUser) {
       window.location.href = '/login';
@@ -39,8 +39,14 @@
         </div>
       </div>
 
-      <!-- Agent Info & Logout -->
+      <!-- Live Bangkok Clock (Thailand Time UTC+7) & Logout -->
       <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs text-slate-400 font-medium">🇹🇭 Bangkok Time:</span>
+          <span id="bangkokClock" class="text-xs font-bold font-mono text-amber-400">--:--:--</span>
+        </div>
+
         <div class="text-right hidden sm:block">
           <div id="agentNameDisplay" class="text-xs font-bold text-white">ကော်မရှင် အေးဂျင့်</div>
           <div class="text-[10px] text-emerald-400">Active Agent Account</div>
@@ -67,7 +73,7 @@
         <i data-lucide="zap" class="w-4 h-4"></i> အမြန်ထိုးစာသားဖြန့်စနစ် (Smart Bet Entry)
       </button>
       <button onclick="switchAgentTab('slips')" id="tabBtnAgentSlips" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
-        <i data-lucide="receipt" class="w-4 h-4"></i> ကျွန်ုပ်၏ထိုးစလစ်များ (My Slips)
+        <i data-lucide="history" class="w-4 h-4"></i> ၇ ရက်စာ မှတ်တမ်း (My Slips History)
       </button>
       <button onclick="switchAgentTab('ledger')" id="tabBtnAgentLedger" class="pb-3 px-2 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
         <i data-lucide="wallet" class="w-4 h-4"></i> ကော်မရှင်ရှင်းတမ်း (My Ledger)
@@ -81,23 +87,43 @@
       <div class="lg:col-span-7 space-y-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
           
-          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-              <i data-lucide="message-square" class="w-5 h-5 text-emerald-400"></i>
-              Telegram မှ စာသား ရိုက်ထည့်ရန်
-            </h2>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-slate-400">ပွဲစဉ်:</label>
-              <select id="agentSessionSelect" class="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:ring-1 focus:ring-emerald-500">
-                <!-- Populated by JS -->
-              </select>
+          <!-- Session Selector & Realtime Cutoff Countdown Banner -->
+          <div class="space-y-2 border-b border-slate-800 pb-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="message-square" class="w-5 h-5 text-emerald-400"></i>
+                Telegram မှ စာသား ရိုက်ထည့်ရန်
+              </h2>
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-400">ပွဲစဉ်:</label>
+                <select id="agentSessionSelect" class="bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:ring-1 focus:ring-emerald-500 max-w-[280px]">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+            </div>
+
+            <!-- Dynamic Live Cutoff Banner (Strict 12:00 PM / 04:00 PM) -->
+            <div id="sessionStatusBanner" class="p-3 rounded-xl border flex items-center justify-between text-xs transition-all bg-emerald-950/40 border-emerald-800/60 text-emerald-300">
+              <div class="flex items-center gap-2">
+                <span id="sessionStatusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="sessionStatusTitle" class="font-bold text-white">မနက်ပိုင်းပွဲ (12:00 PM အထိုးပိတ်ပါမည်)</span>
+              </div>
+              <div id="sessionCountdownBadge" class="font-mono font-bold px-2.5 py-1 rounded-md bg-slate-900 text-amber-300 border border-slate-800">
+                ⏳ စစ်ဆေးနေပါသည်...
+              </div>
             </div>
           </div>
 
-          <!-- Customer Name & Lottery Type -->
+          <!-- Customer Name (with Lock Feature) & Lottery Type -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">ထိုးသား အမည် (Telegram Name)</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-semibold text-slate-300">ထိုးသား အမည် (Customer)</label>
+                <button type="button" onclick="toggleCustomerLock()" id="btnCustomerLock" class="text-[11px] text-slate-400 hover:text-amber-400 flex items-center gap-1">
+                  <i data-lucide="lock" class="w-3 h-3"></i>
+                  <span id="lockText">Lock မချထားပါ</span>
+                </button>
+              </div>
               <input type="text" id="customerNameInput" placeholder="ဥပမာ - ကိုကျော် (Telegram)" 
                      class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
             </div>
@@ -187,7 +213,7 @@
             <button id="btnSubmitBet" onclick="submitBetSlip()" disabled
                     class="w-full py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg">
               <i data-lucide="send" class="w-4 h-4"></i>
-              ဒိုင်ဆီသို့ စာရင်းတင်မည် (Confirm & Send)
+              <span id="btnSubmitText">ဒိုင်ဆီသို့ စာရင်းတင်မည် (Confirm & Send)</span>
             </button>
           </div>
 
@@ -196,24 +222,46 @@
 
     </div>
 
-    <!-- TAB 2: AGENT MY SLIPS -->
+    <!-- TAB 2: AGENT MY SLIPS (7-DAY HISTORY FILTER) -->
     <div id="agentTabSlips" class="hidden space-y-4">
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-base font-bold text-white flex items-center gap-2">
-            <i data-lucide="receipt" class="w-5 h-5 text-emerald-400"></i>
-            ကျွန်ုပ် တင်ထားသော စလစ်များ (My Betting Slips)
-          </h2>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="calendar" class="w-5 h-5 text-emerald-400"></i>
+              ၇ ရက်စာ ထိုးစလစ် မှတ်တမ်းများ (7-Day History)
+            </h2>
+            <p class="text-xs text-slate-400">အတိတ်မှတ်တမ်းများ မပျောက်ပျက်စေရန် အနည်းဆုံး ၁ ပတ်စာ အပြည့်အစုံ သိမ်းဆည်းထားပါသည်</p>
+          </div>
           <button onclick="loadAgentSlips()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> ပြန်လည်စစ်မည်
           </button>
         </div>
+
+        <!-- 7-Day Filter Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-xs text-slate-400 mr-1">📅 ကာလရွေးရန်:</span>
+            <button onclick="setHistoryPeriod('today')" id="periodBtn_today" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white transition-all">ယနေ့ (Today)</button>
+            <button onclick="setHistoryPeriod('yesterday')" id="periodBtn_yesterday" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">မနေ့က</button>
+            <button onclick="setHistoryPeriod('week')" id="periodBtn_week" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">ပြီးခဲ့သော ၇ ရက်</button>
+            <button onclick="setHistoryPeriod('all')" id="periodBtn_all" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">မှတ်တမ်းအားလုံး</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">ရက်စွဲရွေးရန်:</span>
+            <input type="date" id="historyDateInput" onchange="filterBySpecificDate(this.value)" 
+                   class="bg-slate-900 text-xs text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+          </div>
+        </div>
+
+        <!-- Slips Table -->
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="bg-slate-800 text-slate-400 uppercase font-semibold">
               <tr>
                 <th class="p-3">စလစ် #</th>
-                <th class="p-3">အချိန်</th>
+                <th class="p-3">အချိန် (Bangkok Time)</th>
                 <th class="p-3">ထိုးသား</th>
                 <th class="p-3">ပွဲစဉ်</th>
                 <th class="p-3">အထိုးစုစုပေါင်း</th>
@@ -228,6 +276,7 @@
             </tbody>
           </table>
         </div>
+
       </div>
     </div>
 
@@ -286,6 +335,10 @@
     let currentLotteryType = '2D';
     let currentParsedItems = [];
     let parseDebounceTimer = null;
+    let allSessionsList = [];
+    let currentPeriod = 'today';
+    let isCustomerLocked = false;
+    let serverTimeDelta = 0;
 
     document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('agentNameDisplay').textContent = authUser.name || 'ကော်မရှင် အေးဂျင့်';
@@ -293,6 +346,7 @@
       document.getElementById('agentCommBadge').textContent = `${commRate}% Comm`;
       document.getElementById('previewCommLabel').textContent = `ကော်မရှင် (${commRate}%):`;
       
+      await syncTimeWithServer();
       await loadSessions();
       setupEventListeners();
       lucide.createIcons();
@@ -302,6 +356,120 @@
       localStorage.removeItem('lottery_token');
       localStorage.removeItem('lottery_user');
       window.location.href = '/login';
+    }
+
+    // Customer Name Lock Toggle
+    function toggleCustomerLock() {
+      isCustomerLocked = !isCustomerLocked;
+      const btn = document.getElementById('btnCustomerLock');
+      const text = document.getElementById('lockText');
+      if (isCustomerLocked) {
+        btn.className = 'text-[11px] text-amber-400 font-bold flex items-center gap-1';
+        text.textContent = '🔒 Lock ချထားသည်';
+        showToast('🔒 Customer အမည်ကို Lock ချမှတ်ထားပြီးဖြစ်၍ အကြိမ်ကြိမ် ရိုက်ရန်မလိုတော့ပါ');
+      } else {
+        btn.className = 'text-[11px] text-slate-400 hover:text-amber-400 flex items-center gap-1';
+        text.textContent = 'Lock မချထားပါ';
+      }
+    }
+
+    // Sync Bangkok Time from Server
+    async function syncTimeWithServer() {
+      try {
+        const res = await fetch('/api/time');
+        const json = await res.json();
+        if (json.success) {
+          serverTimeDelta = json.timestamp - Date.now();
+        }
+      } catch (e) {}
+    }
+
+    function getNowBangkok() {
+      return new Date(Date.now() + serverTimeDelta);
+    }
+
+    // Bangkok Clock & Countdown Update
+    function updateClock() {
+      const now = getNowBangkok();
+      const clockEl = document.getElementById('bangkokClock');
+      if (clockEl) {
+        clockEl.textContent = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Bangkok', hour12: true });
+      }
+
+      // Check current selected session status
+      const select = document.getElementById('agentSessionSelect');
+      if (!select || !select.value) return;
+
+      const sessId = parseInt(select.value, 10);
+      const session = allSessionsList.find(s => s.id === sessId);
+      if (!session) return;
+
+      updateCutoffUI(session, now);
+    }
+    setInterval(updateClock, 1000);
+
+    function updateCutoffUI(session, now) {
+      const banner = document.getElementById('sessionStatusBanner');
+      const dot = document.getElementById('sessionStatusDot');
+      const title = document.getElementById('sessionStatusTitle');
+      const badge = document.getElementById('sessionCountdownBadge');
+      const textInput = document.getElementById('betTextInput');
+      const submitBtn = document.getElementById('btnSubmitBet');
+      const submitText = document.getElementById('btnSubmitText');
+
+      // 3D Session
+      if (session.lottery_type === '3D') {
+        banner.className = 'p-3 rounded-xl border flex items-center justify-between text-xs bg-slate-900 border-slate-700 text-slate-300';
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse';
+        title.textContent = `${session.session_name} (ဖွင့်လှစ်ဆဲ)`;
+        badge.textContent = '3D ဖွင့်လှစ်ထားပါသည်';
+        textInput.disabled = false;
+        return;
+      }
+
+      // 2D Session (Morning: 12:00 PM cutoff, Evening: 04:00 PM cutoff)
+      const isMorning = session.session_name.includes('မနက်') || session.session_name.includes('12:00');
+      const cutoffHour = isMorning ? 12 : 16;
+      const cutoffLabel = isMorning ? '12:00 PM' : '04:00 PM';
+      const resultLabel = isMorning ? '12:30 PM' : '04:30 PM';
+
+      const cutoffTime = new Date(now);
+      cutoffTime.setHours(cutoffHour, 0, 0, 0);
+
+      const diffSec = Math.floor((cutoffTime.getTime() - now.getTime()) / 1000);
+
+      if (session.status !== 'open' || diffSec <= 0) {
+        // CLOSED / RESTRICTED!
+        banner.className = 'p-3 rounded-xl border flex items-center justify-between text-xs bg-rose-950/60 border-rose-800 text-rose-300';
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+        title.innerHTML = `<span class="font-bold text-rose-300">🛑 အထိုးပိတ်သွားပါပြီ</span> (${cutoffLabel} တွင် အထိုးပိတ်ပါသည် - ထွက်ဂဏန်း ${resultLabel})`;
+        badge.className = 'font-mono font-bold px-2.5 py-1 rounded-md bg-rose-950 text-rose-400 border border-rose-800';
+        badge.textContent = '🔴 MARKET CLOSED';
+
+        textInput.disabled = true;
+        textInput.placeholder = `🛑 ဤပွဲစဉ်သည် ${cutoffLabel} တွင် အထိုးပိတ်သွားပါသဖြင့် စာရင်းတင်၍ မရတော့ပါ`;
+        submitBtn.disabled = true;
+        submitBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-rose-950/60 border border-rose-800 text-rose-400 cursor-not-allowed flex items-center justify-center gap-2';
+        submitText.textContent = `🛑 အထိုးပိတ်သွားပါပြီ (${cutoffLabel} ကျော်လွန်)`;
+      } else {
+        // OPEN FOR BETTING!
+        banner.className = 'p-3 rounded-xl border flex items-center justify-between text-xs bg-emerald-950/40 border-emerald-800/60 text-emerald-300';
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
+        title.innerHTML = `<span class="font-bold text-emerald-300">🟢 အထိုးဖွင့်လှစ်ဆဲ</span> (${cutoffLabel} မတိုင်မီ အထိုးပိတ်မည် - ထွက်ဂဏန်း ${resultLabel})`;
+        
+        const mins = Math.floor(diffSec / 60);
+        const secs = diffSec % 60;
+        badge.className = 'font-mono font-bold px-2.5 py-1 rounded-md bg-slate-900 text-amber-300 border border-slate-800';
+        badge.textContent = `⏳ ${mins} မိနစ် ${secs < 10 ? '0' : ''}${secs} စက္ကန့် ကျန်`;
+
+        textInput.disabled = false;
+        textInput.placeholder = "ဥပမာ-\n45 R 200\n95 1000\n12, 34, 56 - 500";
+        if (currentParsedItems.length > 0) {
+          submitBtn.disabled = false;
+          submitBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 shadow-lg cursor-pointer flex items-center justify-center gap-2';
+          submitText.textContent = 'ဒိုင်ဆီသို့ စာရင်းတင်မည် (Confirm & Send)';
+        }
+      }
     }
 
     function setupEventListeners() {
@@ -314,6 +482,7 @@
       const sessionSelect = document.getElementById('agentSessionSelect');
       sessionSelect.addEventListener('change', () => {
         triggerParse();
+        updateClock();
       });
     }
 
@@ -322,10 +491,21 @@
         const res = await fetch('/api/sessions');
         const json = await res.json();
         if (json.success) {
+          allSessionsList = json.data;
           const agentSelect = document.getElementById('agentSessionSelect');
-          agentSelect.innerHTML = json.data.map(s => 
-            `<option value="${s.id}">[${s.lottery_type}] ${s.session_name} (${s.status === 'open' ? '🟢 ဖွင့်လှစ်ဆဲ' : '🔴 ပြီးဆုံး'})</option>`
-          ).join('');
+          
+          agentSelect.innerHTML = allSessionsList.map(s => {
+            const isClosed = !s.can_bet || s.status !== 'open';
+            return `<option value="${s.id}">${isClosed ? '🔴 [ပိတ်] ' : '🟢 [ဖွင့်] '} ${s.session_name}</option>`;
+          }).join('');
+
+          // Select first open session if available
+          const firstOpen = allSessionsList.find(s => s.can_bet && s.status === 'open');
+          if (firstOpen) {
+            agentSelect.value = firstOpen.id;
+          }
+
+          updateClock();
         }
       } catch (err) {}
     }
@@ -346,6 +526,7 @@
 
     function insertTemplate(snippet) {
       const input = document.getElementById('betTextInput');
+      if (input.disabled) return;
       const current = input.value.trim();
       input.value = current ? current + '\n' + snippet : snippet;
       triggerParse();
@@ -377,7 +558,6 @@
         netBankerEl.textContent = '0 Ks';
         errorBox.classList.add('hidden');
         submitBtn.disabled = true;
-        submitBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2';
         return;
       }
 
@@ -440,13 +620,7 @@
             errorBox.classList.add('hidden');
           }
 
-          if (data.items.length > 0 && !hasBlocked) {
-            submitBtn.disabled = false;
-            submitBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 shadow-lg cursor-pointer flex items-center justify-center gap-2';
-          } else {
-            submitBtn.disabled = true;
-            submitBtn.className = 'w-full py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2';
-          }
+          updateClock();
         }
       } catch (err) {}
     }
@@ -482,8 +656,11 @@
             totalAmount: data.totalAmount
           });
 
+          // Reset inputs (preserve customer name if locked)
           document.getElementById('betTextInput').value = '';
-          document.getElementById('customerNameInput').value = '';
+          if (!isCustomerLocked) {
+            document.getElementById('customerNameInput').value = '';
+          }
           triggerParse();
           loadAgentSlips();
         } else {
@@ -501,7 +678,7 @@
         `🧾 【 2D/3D ထိုးစာရင်း စလစ် #${slip.slipId} 】`,
         `👤 ထိုးသား: ${slip.customerName}`,
         `📅 ပွဲစဉ်: ${slip.sessionName}`,
-        `⏰ အချိန်: ${new Date().toLocaleTimeString('my-MM')}`,
+        `⏰ အချိန်: ${new Date().toLocaleTimeString('my-MM', { timeZone: 'Asia/Bangkok' })} (BKK Time)`,
         `--------------------------------`,
         ...slip.items.map(i => `▫️ ${i.number}  ➜  ${i.amount.toLocaleString()} Ks`),
         `--------------------------------`,
@@ -557,9 +734,42 @@
       lucide.createIcons();
     }
 
-    async function loadAgentSlips() {
+    // 7-Day History Period Filters
+    function setHistoryPeriod(period) {
+      currentPeriod = period;
+      document.getElementById('historyDateInput').value = '';
+      ['today', 'yesterday', 'week', 'all'].forEach(p => {
+        const btn = document.getElementById(`periodBtn_${p}`);
+        if (btn) {
+          if (p === period) {
+            btn.className = 'px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white transition-all';
+          } else {
+            btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all';
+          }
+        }
+      });
+      loadAgentSlips(period);
+    }
+
+    function filterBySpecificDate(dateVal) {
+      if (!dateVal) return;
+      ['today', 'yesterday', 'week', 'all'].forEach(p => {
+        const btn = document.getElementById(`periodBtn_${p}`);
+        if (btn) btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all';
+      });
+      loadAgentSlips(null, dateVal);
+    }
+
+    async function loadAgentSlips(period = currentPeriod, specificDate = null) {
       try {
-        const res = await fetch(`/api/slips?agent_id=${authUser.id}`);
+        let url = `/api/slips?agent_id=${authUser.id}`;
+        if (specificDate) {
+          url += `&date=${specificDate}`;
+        } else if (period) {
+          url += `&period=${period}`;
+        }
+
+        const res = await fetch(url);
         const json = await res.json();
         const tbody = document.getElementById('agentSlipsTableBody');
 
@@ -574,10 +784,19 @@
               }
             }
 
+            const timeStr = new Date(s.created_at).toLocaleString('my-MM', {
+              timeZone: 'Asia/Bangkok',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
+
             return `
               <tr class="hover:bg-slate-800/40">
                 <td class="p-3 font-mono font-bold text-emerald-400">#${s.id}</td>
-                <td class="p-3 text-slate-400">${new Date(s.created_at).toLocaleTimeString('my-MM')}</td>
+                <td class="p-3 text-slate-300 font-mono text-[11px]">${timeStr}</td>
                 <td class="p-3 font-semibold text-white">${s.customer_name}</td>
                 <td class="p-3 text-slate-300">${s.session_name}</td>
                 <td class="p-3 font-semibold text-white">${s.total_amount.toLocaleString()} Ks</td>
@@ -593,7 +812,7 @@
             `;
           }).join('');
         } else {
-          tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">တင်ထားသော စလစ်မရှိသေးပါ</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">ရွေးချယ်ထားသော ကာလတွင် တင်ထားသော စလစ် မရှိပါ</td></tr>`;
         }
       } catch (err) {}
     }

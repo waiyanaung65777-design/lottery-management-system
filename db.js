@@ -1,14 +1,14 @@
 const path = require('path');
 const fs = require('fs');
+const { getBangkokNow, getBangkokDateStr, checkSessionBettingAllowed } = require('./timeUtils');
 
 let sqlite3 = null;
 try {
   sqlite3 = require('sqlite3').verbose();
 } catch (e) {
-  console.warn('⚠️ Native sqlite3 not available in this environment. Falling back to in-memory store.');
+  console.warn('⚠️ Native sqlite3 not available. Using resilient in-memory store.');
 }
 
-// On Vercel, the filesystem is read-only except /tmp
 const dbPath = process.env.VERCEL
   ? path.join('/tmp', 'lottery.db')
   : path.resolve(__dirname, 'lottery.db');
@@ -20,31 +20,142 @@ if (sqlite3) {
   try {
     db = new sqlite3.Database(dbPath);
   } catch (err) {
-    console.warn('⚠️ Could not open SQLite database file, using in-memory mode:', err.message);
+    console.warn('⚠️ SQLite file open failed, using memory mode:', err.message);
     useInMemory = true;
   }
 } else {
   useInMemory = true;
 }
 
-// In-Memory Data Store Fallback for serverless environments where native sqlite3 binaries fail
+// Generate past 7 days dates in Bangkok time
+function getPastDays(count = 7) {
+  const days = [];
+  const bkk = getBangkokNow();
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(bkk);
+    d.setDate(d.getDate() - i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    days.push(`${y}-${m}-${day}`);
+  }
+  return days;
+}
+
+// In-Memory Data Store with 7-Day History Seeded
 const memoryStore = {
   users: [
     { id: 1, username: 'admin', name: 'ဒိုင်ချုပ်ကြီး (Master)', role: 'banker', commission_rate: 0, payout_multiplier_2d: 85, payout_multiplier_3d: 600, credit_limit: 1000000, status: 'active' },
     { id: 2, username: 'agent1', name: 'ကိုအောင် (Agent 1)', role: 'agent', commission_rate: 15.0, payout_multiplier_2d: 85, payout_multiplier_3d: 600, credit_limit: 1000000, status: 'active' },
     { id: 3, username: 'agent2', name: 'ကိုကျော် (Agent 2)', role: 'agent', commission_rate: 12.0, payout_multiplier_2d: 85, payout_multiplier_3d: 600, credit_limit: 1000000, status: 'active' }
   ],
-  sessions: [
-    { id: 1, lottery_type: '2D', session_name: 'ယနေ့ 2D (12:01 PM)', status: 'open', winning_number: null, payout_multiplier: 85.0 },
-    { id: 2, lottery_type: '2D', session_name: 'ယနေ့ 2D (04:30 PM)', status: 'open', winning_number: null, payout_multiplier: 85.0 },
-    { id: 3, lottery_type: '3D', session_name: '3D ပွဲစဉ် (၁၆ ရက်နေ့)', status: 'open', winning_number: null, payout_multiplier: 600.0 }
-  ],
+  sessions: [],
   number_limits: [
     { id: 1, session_id: null, lottery_type: '2D', number: '95', max_amount: 50000 }
   ],
   slips: [],
   slip_items: []
 };
+
+// Seed 7 Days of sessions & history in memoryStore
+function seedHistoryData() {
+  const pastDays = getPastDays(7);
+  let sessId = 1;
+  let slipId = 1;
+  let itemId = 1;
+
+  memoryStore.sessions = [];
+  memoryStore.slips = [];
+  memoryStore.slip_items = [];
+
+  pastDays.forEach((dateStr, idx) => {
+    const isToday = idx === pastDays.length - 1;
+
+    // Morning Session (12:00 PM Close, 12:30 PM Result)
+    const morningClose = `${dateStr}T12:00:00+07:00`;
+    const mSession = {
+      id: sessId++,
+      lottery_type: '2D',
+      session_name: `${dateStr} မနက်ပိုင်း (12:00 PM ပိတ် / 12:30 PM ထွက်)`,
+      session_date: dateStr,
+      close_time: morningClose,
+      result_time: '12:30 PM',
+      status: isToday ? 'open' : 'settled',
+      winning_number: isToday ? null : String(Math.floor(10 + Math.random() * 89)),
+      payout_multiplier: 85.0
+    };
+    memoryStore.sessions.push(mSession);
+
+    // Evening Session (04:00 PM Close, 04:30 PM Result)
+    const eveningClose = `${dateStr}T16:00:00+07:00`;
+    const eSession = {
+      id: sessId++,
+      lottery_type: '2D',
+      session_name: `${dateStr} ညနေပိုင်း (04:00 PM ပိတ် / 04:30 PM ထွက်)`,
+      session_date: dateStr,
+      close_time: eveningClose,
+      result_time: '04:30 PM',
+      status: isToday ? 'open' : 'settled',
+      winning_number: isToday ? null : String(Math.floor(10 + Math.random() * 89)),
+      payout_multiplier: 85.0
+    };
+    memoryStore.sessions.push(eSession);
+
+    // Seed sample slips for past days (to ensure 7-day history is clearly visible)
+    if (!isToday) {
+      const sampleNumbers = ['45', '54', '12', '95', '23'];
+      const winNum = mSession.winning_number;
+      
+      const s1 = {
+        id: slipId++,
+        agent_id: 2,
+        session_id: mSession.id,
+        customer_name: 'ကိုကျော် (Telegram)',
+        raw_text: '45 R 500',
+        lottery_type: '2D',
+        total_amount: 1000,
+        commission_rate: 15.0,
+        commission_amount: 150,
+        net_to_banker: 850,
+        status: 'confirmed',
+        created_at: `${dateStr}T10:45:00+07:00`
+      };
+      memoryStore.slips.push(s1);
+
+      memoryStore.slip_items.push({
+        id: itemId++,
+        slip_id: s1.id,
+        number: '45',
+        amount: 500,
+        is_winner: '45' === winNum ? 1 : 0,
+        win_amount: '45' === winNum ? 500 * 85 : 0
+      });
+      memoryStore.slip_items.push({
+        id: itemId++,
+        slip_id: s1.id,
+        number: '54',
+        amount: 500,
+        is_winner: '54' === winNum ? 1 : 0,
+        win_amount: '54' === winNum ? 500 * 85 : 0
+      });
+    }
+  });
+
+  // 3D Session
+  memoryStore.sessions.push({
+    id: sessId++,
+    lottery_type: '3D',
+    session_name: '3D ပွဲစဉ် (၁၆ ရက်နေ့)',
+    session_date: pastDays[pastDays.length - 1],
+    close_time: null,
+    result_time: '03:30 PM',
+    status: 'open',
+    winning_number: null,
+    payout_multiplier: 600.0
+  });
+}
+
+seedHistoryData();
 
 function run(sql, params = []) {
   if (useInMemory || !db) {
@@ -82,39 +193,8 @@ function all(sql, params = []) {
   });
 }
 
-// In-Memory Query Handlers
 function runMemory(sql, params) {
   const cleanSql = sql.trim().toUpperCase();
-  if (cleanSql.startsWith('INSERT INTO USERS')) {
-    const id = memoryStore.users.length + 1;
-    memoryStore.users.push({
-      id,
-      username: params[0],
-      name: params[1],
-      role: params[2] || 'agent',
-      commission_rate: params[3] || 15.0,
-      credit_limit: params[4] || 1000000,
-      status: 'active'
-    });
-    return Promise.resolve({ id });
-  }
-
-  if (cleanSql.startsWith('INSERT INTO NUMBER_LIMITS')) {
-    const id = memoryStore.number_limits.length + 1;
-    memoryStore.number_limits.push({
-      id,
-      lottery_type: params[0],
-      number: params[1],
-      max_amount: params[2]
-    });
-    return Promise.resolve({ id });
-  }
-
-  if (cleanSql.startsWith('DELETE FROM NUMBER_LIMITS')) {
-    const id = parseInt(params[0], 10);
-    memoryStore.number_limits = memoryStore.number_limits.filter(l => l.id !== id);
-    return Promise.resolve({ changes: 1 });
-  }
 
   if (cleanSql.startsWith('INSERT INTO SLIPS')) {
     const id = memoryStore.slips.length + 1;
@@ -147,6 +227,37 @@ function runMemory(sql, params) {
       win_amount: 0
     });
     return Promise.resolve({ id });
+  }
+
+  if (cleanSql.startsWith('INSERT INTO USERS')) {
+    const id = memoryStore.users.length + 1;
+    memoryStore.users.push({
+      id,
+      username: params[0],
+      name: params[1],
+      role: params[2] || 'agent',
+      commission_rate: params[3] || 15.0,
+      credit_limit: params[4] || 1000000,
+      status: 'active'
+    });
+    return Promise.resolve({ id });
+  }
+
+  if (cleanSql.startsWith('INSERT INTO NUMBER_LIMITS')) {
+    const id = memoryStore.number_limits.length + 1;
+    memoryStore.number_limits.push({
+      id,
+      lottery_type: params[0],
+      number: params[1],
+      max_amount: params[2]
+    });
+    return Promise.resolve({ id });
+  }
+
+  if (cleanSql.startsWith('DELETE FROM NUMBER_LIMITS')) {
+    const id = parseInt(params[0], 10);
+    memoryStore.number_limits = memoryStore.number_limits.filter(l => l.id !== id);
+    return Promise.resolve({ changes: 1 });
   }
 
   if (cleanSql.includes('UPDATE SESSIONS SET STATUS = \'SETTLED\'')) {
@@ -237,7 +348,8 @@ function allMemory(sql, params) {
   }
 
   if (cleanSql.includes('FROM SESSIONS')) {
-    return Promise.resolve([...memoryStore.sessions]);
+    // Return sessions sorted newest first
+    return Promise.resolve([...memoryStore.sessions].reverse());
   }
 
   if (cleanSql.includes('FROM NUMBER_LIMITS')) {
@@ -285,7 +397,7 @@ async function initDB() {
   isInitialized = true;
 
   if (useInMemory || !db) {
-    console.log('✅ Serverless in-memory store initialized.');
+    console.log('✅ Serverless in-memory store initialized with 7-Day History.');
     return;
   }
 
@@ -312,6 +424,9 @@ async function initDB() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         lottery_type TEXT NOT NULL CHECK(lottery_type IN ('2D', '3D')),
         session_name TEXT NOT NULL,
+        session_date TEXT,
+        close_time TEXT,
+        result_time TEXT,
         status TEXT DEFAULT 'open' CHECK(status IN ('open', 'closed', 'settled')),
         winning_number TEXT,
         payout_multiplier REAL DEFAULT 85.0,
@@ -319,6 +434,11 @@ async function initDB() {
         settled_at DATETIME
       );
     `);
+
+    // Safe column migrations for existing SQLite databases
+    try { await run(`ALTER TABLE sessions ADD COLUMN session_date TEXT;`); } catch(e){}
+    try { await run(`ALTER TABLE sessions ADD COLUMN close_time TEXT;`); } catch(e){}
+    try { await run(`ALTER TABLE sessions ADD COLUMN result_time TEXT;`); } catch(e){}
 
     await run(`
       CREATE TABLE IF NOT EXISTS number_limits (
@@ -362,6 +482,7 @@ async function initDB() {
       );
     `);
 
+    // Ensure users exist
     const userCount = await get(`SELECT COUNT(*) as count FROM users;`);
     if (!userCount || userCount.count === 0) {
       await run(`
@@ -375,19 +496,50 @@ async function initDB() {
         ('agent1', 'ကိုအောင် (Agent 1)', 'agent', 15.0),
         ('agent2', 'ကိုကျော် (Agent 2)', 'agent', 12.0);
       `);
+    }
 
-      await run(`
-        INSERT INTO sessions (lottery_type, session_name, status, payout_multiplier)
-        VALUES 
-        ('2D', 'ယနေ့ 2D (12:01 PM)', 'open', 85.0),
-        ('2D', 'ယနေ့ 2D (04:30 PM)', 'open', 85.0),
-        ('3D', '3D ပွဲစဉ် (၁၆ ရက်နေ့)', 'open', 600.0);
-      `);
+    // Ensure 7 days sessions exist
+    const pastDays = getPastDays(7);
+    for (let i = 0; i < pastDays.length; i++) {
+      const dStr = pastDays[i];
+      const isToday = i === pastDays.length - 1;
 
+      const existingM = await get(`SELECT id FROM sessions WHERE session_name LIKE ?`, [`${dStr} မနက်ပိုင်း%`]);
+      if (!existingM) {
+        await run(`
+          INSERT INTO sessions (lottery_type, session_name, session_date, close_time, result_time, status, winning_number, payout_multiplier)
+          VALUES ('2D', ?, ?, ?, '12:30 PM', ?, ?, 85.0);
+        `, [
+          `${dStr} မနက်ပိုင်း (12:00 PM ပိတ် / 12:30 PM ထွက်)`,
+          dStr,
+          `${dStr}T12:00:00+07:00`,
+          isToday ? 'open' : 'settled',
+          isToday ? null : String(Math.floor(10 + Math.random() * 89))
+        ]);
+      }
+
+      const existingE = await get(`SELECT id FROM sessions WHERE session_name LIKE ?`, [`${dStr} ညနေပိုင်း%`]);
+      if (!existingE) {
+        await run(`
+          INSERT INTO sessions (lottery_type, session_name, session_date, close_time, result_time, status, winning_number, payout_multiplier)
+          VALUES ('2D', ?, ?, ?, '04:30 PM', ?, ?, 85.0);
+        `, [
+          `${dStr} ညနေပိုင်း (04:00 PM ပိတ် / 04:30 PM ထွက်)`,
+          dStr,
+          `${dStr}T16:00:00+07:00`,
+          isToday ? 'open' : 'settled',
+          isToday ? null : String(Math.floor(10 + Math.random() * 89))
+        ]);
+      }
+    }
+
+    // 3D session
+    const existing3D = await get(`SELECT id FROM sessions WHERE lottery_type = '3D'`);
+    if (!existing3D) {
       await run(`
-        INSERT INTO number_limits (lottery_type, number, max_amount)
-        VALUES ('2D', '95', 50000);
-      `);
+        INSERT INTO sessions (lottery_type, session_name, session_date, status, payout_multiplier)
+        VALUES ('3D', '3D ပွဲစဉ် (၁၆ ရက်နေ့)', ?, 'open', 600.0);
+      `, [pastDays[pastDays.length - 1]]);
     }
   } catch (err) {
     console.warn('SQLite init warning, falling back to memory store:', err.message);
@@ -397,6 +549,7 @@ async function initDB() {
 
 module.exports = {
   db,
+  memoryStore,
   run,
   get,
   all,

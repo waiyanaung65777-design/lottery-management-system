@@ -39,8 +39,14 @@
         </div>
       </div>
 
-      <!-- User Profile & Logout -->
+      <!-- User Profile, Bangkok Clock & Logout -->
       <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs text-slate-400 font-medium">🇹🇭 Bangkok Time:</span>
+          <span id="bankerBangkokClock" class="text-xs font-bold font-mono text-amber-400">--:--:--</span>
+        </div>
+
         <div class="text-right hidden sm:block">
           <div id="bankerNameDisplay" class="text-xs font-bold text-white">ဒိုင်ချုပ်ကြီး</div>
           <div class="text-[10px] text-amber-400">Super Administrator</div>
@@ -291,13 +297,32 @@
     <div id="bankerTabAllSlips" class="hidden space-y-4">
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
-            ဒိုင်ဆီသို့ တက်လာသမျှ စလစ်များ အားလုံး
-          </h3>
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+              ဒိုင်ဆီသို့ တက်လာသမျှ စလစ်များ အားလုံး (၇ ရက်စာ မှတ်တမ်း)
+            </h3>
+            <p class="text-xs text-slate-400">ကာလအလိုက် စလစ်များနှင့် စာရင်းချုပ်များကို အလွယ်တကူ စစ်ဆေးနိုင်ပါသည်</p>
+          </div>
           <button onclick="loadBankerSlips()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> အသစ်ပြန်ဖွင့်ရန်
           </button>
+        </div>
+
+        <!-- 7-Day History Period Filters -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-xs text-slate-400 mr-1">📅 ကာလရွေးရန်:</span>
+            <button onclick="setBankerPeriod('today')" id="bPeriodBtn_today" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition-all">ယနေ့ (Today)</button>
+            <button onclick="setBankerPeriod('yesterday')" id="bPeriodBtn_yesterday" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">မနေ့က</button>
+            <button onclick="setBankerPeriod('week')" id="bPeriodBtn_week" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">ပြီးခဲ့သော ၇ ရက်</button>
+            <button onclick="setBankerPeriod('all')" id="bPeriodBtn_all" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all">မှတ်တမ်းအားလုံး</button>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">ရက်စွဲရွေးရန်:</span>
+            <input type="date" id="bHistoryDateInput" onchange="filterBankerSpecificDate(this.value)" 
+                   class="bg-slate-900 text-xs text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500">
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-300">
@@ -328,6 +353,7 @@
     // Init
     document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('bankerNameDisplay').textContent = authUser.name || 'ဒိုင်ချုပ်ကြီး';
+      await syncBankerTime();
       await loadSessions();
       loadBankerDashboard();
       lucide.createIcons();
@@ -555,29 +581,94 @@
       }
     }
 
-    async function loadBankerSlips() {
+    let bCurrentPeriod = 'today';
+    let bankerServerDelta = 0;
+
+    // Sync Bangkok Time
+    async function syncBankerTime() {
       try {
-        const res = await fetch('/api/slips');
+        const res = await fetch('/api/time');
+        const json = await res.json();
+        if (json.success) {
+          bankerServerDelta = json.timestamp - Date.now();
+        }
+      } catch (e) {}
+    }
+
+    function updateBankerClock() {
+      const now = new Date(Date.now() + bankerServerDelta);
+      const clockEl = document.getElementById('bankerBangkokClock');
+      if (clockEl) {
+        clockEl.textContent = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Bangkok', hour12: true });
+      }
+    }
+    setInterval(updateBankerClock, 1000);
+
+    function setBankerPeriod(period) {
+      bCurrentPeriod = period;
+      document.getElementById('bHistoryDateInput').value = '';
+      ['today', 'yesterday', 'week', 'all'].forEach(p => {
+        const btn = document.getElementById(`bPeriodBtn_${p}`);
+        if (btn) {
+          if (p === period) {
+            btn.className = 'px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 text-slate-950 transition-all';
+          } else {
+            btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all';
+          }
+        }
+      });
+      loadBankerSlips(period);
+    }
+
+    function filterBankerSpecificDate(dateVal) {
+      if (!dateVal) return;
+      ['today', 'yesterday', 'week', 'all'].forEach(p => {
+        const btn = document.getElementById(`bPeriodBtn_${p}`);
+        if (btn) btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all';
+      });
+      loadBankerSlips(null, dateVal);
+    }
+
+    async function loadBankerSlips(period = bCurrentPeriod, specificDate = null) {
+      try {
+        let url = '/api/slips';
+        const params = [];
+        if (specificDate) params.push(`date=${specificDate}`);
+        else if (period) params.push(`period=${period}`);
+        if (params.length > 0) url += `?${params.join('&')}`;
+
+        const res = await fetch(url);
         const json = await res.json();
         const tbody = document.getElementById('bankerAllSlipsTableBody');
         if (json.success && json.data.length > 0) {
-          tbody.innerHTML = json.data.map(s => `
-            <tr class="hover:bg-slate-800/40">
-              <td class="p-3 font-mono font-bold text-amber-400">#${s.id}</td>
-              <td class="p-3 text-slate-400">${new Date(s.created_at).toLocaleTimeString('my-MM')}</td>
-              <td class="p-3 font-bold text-emerald-400">${s.agent_name}</td>
-              <td class="p-3 text-white font-medium">${s.customer_name}</td>
-              <td class="p-3 text-slate-300">${s.session_name}</td>
-              <td class="p-3 font-bold text-white">${s.total_amount.toLocaleString()} Ks</td>
-              <td class="p-3 text-emerald-400">-${s.commission_amount.toLocaleString()} Ks</td>
-              <td class="p-3 text-amber-300 font-bold">${s.net_to_banker.toLocaleString()} Ks</td>
-              <td class="p-3">
-                <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">${s.session_status}</span>
-              </td>
-            </tr>
-          `).join('');
+          tbody.innerHTML = json.data.map(s => {
+            const timeStr = new Date(s.created_at).toLocaleString('my-MM', {
+              timeZone: 'Asia/Bangkok',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
+
+            return `
+              <tr class="hover:bg-slate-800/40">
+                <td class="p-3 font-mono font-bold text-amber-400">#${s.id}</td>
+                <td class="p-3 text-slate-300 font-mono text-[11px]">${timeStr}</td>
+                <td class="p-3 font-bold text-emerald-400">${s.agent_name}</td>
+                <td class="p-3 text-white font-medium">${s.customer_name}</td>
+                <td class="p-3 text-slate-300">${s.session_name}</td>
+                <td class="p-3 font-bold text-white">${s.total_amount.toLocaleString()} Ks</td>
+                <td class="p-3 text-emerald-400">-${s.commission_amount.toLocaleString()} Ks</td>
+                <td class="p-3 text-amber-300 font-bold">${s.net_to_banker.toLocaleString()} Ks</td>
+                <td class="p-3">
+                  <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">${s.session_status}</span>
+                </td>
+              </tr>
+            `;
+          }).join('');
         } else {
-          tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">စလစ် မရှိသေးပါ</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">ရွေးချယ်ထားသော ကာလတွင် စလစ် မရှိပါ</td></tr>`;
         }
       } catch (err) {}
     }
